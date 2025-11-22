@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24点终极解算器</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --card-bg: #34495e;
+            --primary: #e67e22;
+            --primary-hover: #d35400;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --text-main: #ecf0f1;
+            --text-sub: #95a5a6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        p.subtitle {
+            color: var(--text-sub);
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .card-input {
+            width: 22%;
+            height: 70px;
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            border-radius: 8px;
+            background-color: #ecf0f1;
+            color: var(--bg-color);
+            outline: none;
+            transition: all 0.2s;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .card-input:focus {
+            background-color: #fff;
+            box-shadow: 0 0 0 3px var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        button {
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-calc {
+            background-color: var(--primary);
+            flex: 2;
+        }
+        .btn-calc:hover { background-color: var(--primary-hover); }
+
+        .btn-rand {
+            background-color: #7f8c8d;
+            flex: 1;
+        }
+        .btn-rand:hover { background-color: #95a5a6; }
+
+        .btn-clear {
+            background-color: #c0392b;
+            flex: 1;
+        }
+        .btn-clear:hover { background-color: #e74c3c; }
+
+        .result-box {
+            min-height: 80px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .result-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+
+        .success { color: var(--success); }
+        .error { color: var(--error); }
+        .waiting { color: var(--text-sub); font-size: 1rem; font-weight: normal; }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: var(--text-sub);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 480px) {
+            .container { padding: 20px; width: 90%; }
+            .card-input { height: 60px; font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>24点 游戏助手</h1>
+    <p class="subtitle">输入4个数字 (1-13) 或 使用随机发牌</p>
+
+    <div class="input-group">
+        <input type="number" class="card-input" id="n1" placeholder="?" oninput="limitInput(this)">
+        <input type="number" class="card-input" id="n2" placeholder="?" oninput="limitInput(this)">
+        <input type="number" class="card-input" id="n3" placeholder="?" oninput="limitInput(this)">
+        <input type="number" class="card-input" id="n4" placeholder="?" oninput="limitInput(this)">
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-calc" onclick="calculate()">计算结果</button>
+        <button class="btn-rand" onclick="randomize()">随机</button>
+        <button class="btn-clear" onclick="clearInputs()">清空</button>
+    </div>
+
+    <div class="result-box">
+        <div id="result" class="result-text waiting">等待输入...</div>
+    </div>
+
+    <div class="footer">Designed by AI Assistant</div>
+</div>
+
+<script>
+    // 限制输入长度和类型
+    function limitInput(el) {
+        if (el.value.length > 2) {
+            el.value = el.value.slice(0, 2);
+        }
+    }
+
+    // 生成随机数
+    function randomize() {
+        const inputs = document.querySelectorAll('.card-input');
+        inputs.forEach(input => {
+            input.value = Math.floor(Math.random() * 13) + 1;
+        });
+        calculate();
+    }
+
+    // 清空
+    function clearInputs() {
+        const inputs = document.querySelectorAll('.card-input');
+        inputs.forEach(input => input.value = '');
+        const resDiv = document.getElementById('result');
+        resDiv.className = 'result-text waiting';
+        resDiv.innerText = '等待输入...';
+    }
+
+    // 核心计算逻辑入口
+    function calculate() {
+        const inputs = document.querySelectorAll('.card-input');
+        let nums = [];
+        
+        for (let input of inputs) {
+            if (!input.value) {
+                showResult("请输入全部4个数字", "error");
+                return;
+            }
+            nums.push(parseFloat(input.value));
+        }
+
+        // 转换数据结构供算法使用: [{val: 3, expr: "3"}, ...]
+        let arr = nums.map(n => ({ val: n, expr: n.toString() }));
+        
+        const solution = solve24(arr);
+        
+        if (solution) {
+            showResult(`解法: ${solution} = 24`, "success");
+        } else {
+            showResult("无解！这组数字无法凑成24。", "error");
+        }
+    }
+
+    function showResult(text, type) {
+        const resDiv = document.getElementById('result');
+        resDiv.className = `result-text ${type}`;
+        resDiv.innerText = text;
+    }
+
+    // 递归求解算法 (JavaScript版)
+    function solve24(arr) {
+        // 精度
+        const EPSILON = 1e-6;
+
+        if (arr.length === 1) {
+            if (Math.abs(arr[0].val - 24) < EPSILON) {
+                return arr[0].expr;
+            }
+            return null;
+        }
+
+        for (let i = 0; i < arr.length; i++) {
+            for (let j = 0; j < arr.length; j++) {
+                if (i === j) continue;
+
+                let n1 = arr[i];
+                let n2 = arr[j];
+                
+                // 剩余的数组
+                let nextArr = arr.filter((_, idx) => idx !== i && idx !== j);
+
+                // 尝试四则运算
+                // 加
+                let res = solve24([...nextArr, { val: n1.val + n2.val, expr: `(${n1.expr} + ${n2.expr})` }]);
+                if (res) return res;
+
+                // 乘
+                res = solve24([...nextArr, { val: n1.val * n2.val, expr: `(${n1.expr} * ${n2.expr})` }]);
+                if (res) return res;
+
+                // 减 (n1 - n2)
+                res = solve24([...nextArr, { val: n1.val - n2.val, expr: `(${n1.expr} - ${n2.expr})` }]);
+                if (res) return res;
+
+                // 除 (n1 / n2)
+                if (Math.abs(n2.val) > EPSILON) {
+                    res = solve24([...nextArr, { val: n1.val / n2.val, expr: `(${n1.expr} / ${n2.expr})` }]);
+                    if (res) return res;
+                }
+            }
+        }
+        return null;
+    }
+
+    // 支持回车键计算
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            calculate();
+        }
+    });
+</script>
+
+</body>
+</html>
