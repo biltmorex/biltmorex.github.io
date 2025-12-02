@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 真实物理骰子 (红4版)</title>
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at center, #2c3e50 0%, #000000 100%);
+            --die-size: 60px; /* 骰子尺寸 */
+            --die-color: #fff;
+            --dot-color: #333;      /* 普通点的颜色 (黑) */
+            --accent-color: #d63031; /* 特殊点的颜色 (红) */
+            --transition-duration: 1.5s; 
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* 顶部控制栏 */
+        .controls {
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 0 0 20px 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        select {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            background: rgba(255,255,255,0.9);
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 30px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+            color: #333;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4);
+        }
+
+        button:active { transform: scale(0.96); }
+        button:disabled { opacity: 0.7; cursor: not-allowed; filter: grayscale(1); }
+
+        /* 游戏主舞台 */
+        .scene {
+            flex: 1;
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            justify-content: center;
+            align-content: center;
+            flex-wrap: wrap;
+            gap: 40px; 
+            padding: 40px 20px;
+            box-sizing: border-box;
+            perspective: 1200px;
+        }
+
+        .cube-wrapper {
+            width: var(--die-size);
+            height: var(--die-size);
+            position: relative;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transform: rotateX(0deg) rotateY(0deg);
+        }
+
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: var(--die-color);
+            border-radius: 10px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            display: grid;
+            grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+            padding: 4px;
+            box-sizing: border-box;
+            backface-visibility: visible; 
+        }
+
+        /* 面的3D构建 */
+        .front  { transform: rotateY(0deg) translateZ(30px); }
+        .back   { transform: rotateY(180deg) translateZ(30px); }
+        .right  { transform: rotateY(90deg) translateZ(30px); }
+        .left   { transform: rotateY(-90deg) translateZ(30px); }
+        .top    { transform: rotateX(90deg) translateZ(30px); }
+        .bottom { transform: rotateX(-90deg) translateZ(30px); }
+
+        /* 骰子点基础样式 */
+        .dot {
+            background-color: var(--dot-color);
+            border-radius: 50%;
+            margin: auto;
+            width: 12px;
+            height: 12px;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* --- 颜色修改区域 --- */
+
+        /* 1点: 变红，且尺寸较大 */
+        .face[data-face="1"] .dot {
+            background-color: var(--accent-color);
+            width: 18px;
+            height: 18px;
+        }
+
+        /* 4点: 变红 (新增需求) */
+        .face[data-face="4"] .dot {
+            background-color: var(--accent-color);
+        }
+
+        /* --- 结束修改区域 --- */
+
+        .result-bar {
+            background: rgba(0,0,0,0.5);
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            color: #fff;
+            font-size: 1.2rem;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+        }
+        
+        #totalScore {
+            color: #ff9a9e;
+            font-weight: bold;
+            font-size: 1.5rem;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <label>骰子数量:</label>
+        <select id="diceCount" onchange="initDice()">
+            <!-- JS 生成 1-24 -->
+        </select>
+        <button id="rollBtn" onclick="rollAll()">开始投掷</button>
+    </div>
+
+    <div class="scene" id="scene"></div>
+
+    <div class="result-bar">
+        总点数: <span id="totalScore">0</span>
+        <div style="font-size: 0.9rem; opacity: 0.7; margin-top:5px;" id="detailScore">准备就绪</div>
+    </div>
+
+    <script>
+        const MAX_DICE = 24;
+        const scene = document.getElementById('scene');
+        const select = document.getElementById('diceCount');
+        let diceStates = []; 
+
+        // 初始化选项
+        for (let i = 1; i <= MAX_DICE; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.innerText = i + " 枚";
+            if (i === 3) opt.selected = true;
+            select.appendChild(opt);
+        }
+
+        // 点数布局
+        const dotMaps = {
+            1: [[0,0,0], [0,1,0], [0,0,0]],
+            2: [[1,0,0], [0,0,0], [0,0,1]],
+            3: [[1,0,0], [0,1,0], [0,0,1]],
+            4: [[1,0,1], [0,0,0], [1,0,1]],
+            5: [[1,0,1], [0,1,0], [1,0,1]],
+            6: [[1,0,1], [1,0,1], [1,0,1]]
+        };
+
+        // 旋转目标角度
+        const finalRotations = {
+            1: { x: 0, y: 0 },
+            6: { x: 180, y: 0 },
+            2: { x: 0, y: 90 },
+            5: { x: 0, y: -90 },
+            3: { x: -90, y: 0 },
+            4: { x: 90, y: 0 }
+        };
+
+        function createFace(className, val) {
+            const face = document.createElement('div');
+            face.className = `face ${className}`;
+            face.setAttribute('data-face', val);
+            
+            dotMaps[val].flat().forEach(hasDot => {
+                const cell = document.createElement('div');
+                if (hasDot) {
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    cell.appendChild(dot);
+                }
+                face.appendChild(cell);
+            });
+            return face;
+        }
+
+        function initDice() {
+            const count = parseInt(select.value);
+            scene.innerHTML = '';
+            diceStates = [];
+
+            for (let i = 0; i < count; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'cube-wrapper';
+                
+                const cube = document.createElement('div');
+                cube.className = 'cube';
+                cube.id = `die-${i}`;
+
+                const startX = Math.floor(Math.random() * 360);
+                const startY = Math.floor(Math.random() * 360);
+                
+                diceStates.push({ currentX: startX, currentY: startY });
+                cube.style.transform = `rotateX(${startX}deg) rotateY(${startY}deg)`;
+                cube.style.transition = 'transform 1.5s cubic-bezier(0.15, 0.9, 0.34, 1)';
+
+                cube.appendChild(createFace('front', 1));
+                cube.appendChild(createFace('back', 6));
+                cube.appendChild(createFace('right', 5));
+                cube.appendChild(createFace('left', 2));
+                cube.appendChild(createFace('top', 3));
+                cube.appendChild(createFace('bottom', 4));
+
+                wrapper.appendChild(cube);
+                scene.appendChild(wrapper);
+            }
+            
+            document.getElementById('totalScore').innerText = '0';
+            document.getElementById('detailScore').innerText = '准备就绪';
+        }
+
+        function rollAll() {
+            const btn = document.getElementById('rollBtn');
+            btn.disabled = true;
+            btn.innerText = "滚动中...";
+            
+            const count = diceStates.length;
+            let total = 0;
+            let details = [];
+
+            diceStates.forEach((state, index) => {
+                const cube = document.getElementById(`die-${index}`);
+                const result = Math.floor(Math.random() * 6) + 1;
+                total += result;
+                details.push(result);
+
+                const target = finalRotations[result];
+                const minRoll = 720; 
+                const randRoll = Math.random() * 720; 
+                
+                let nextX = state.currentX + minRoll + randRoll;
+                let nextY = state.currentY + minRoll + randRoll;
+                
+                const baseMultipleX = Math.ceil(nextX / 360) * 360;
+                const baseMultipleY = Math.ceil(nextY / 360) * 360;
+                
+                const finalX = baseMultipleX + target.x;
+                const finalY = baseMultipleY + target.y;
+
+                cube.style.transform = `rotateX(${finalX}deg) rotateY(${finalY}deg)`;
+                
+                const duration = 1.2 + Math.random() * 0.6;
+                cube.style.transitionDuration = `${duration}s`;
+
+                state.currentX = finalX;
+                state.currentY = finalY;
+            });
+
+            setTimeout(() => {
+                document.getElementById('totalScore').innerText = total;
+                document.getElementById('detailScore').innerText = `明细: ${details.join(' + ')}`;
+                btn.disabled = false;
+                btn.innerText = "再次投掷";
+            }, 1800);
+        }
+
+        window.onload = initDice;
+    </script>
+</body>
+</html>
