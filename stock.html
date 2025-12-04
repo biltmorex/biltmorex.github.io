@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>指数精准回撤计算器 (可选时间范围)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #007bff;
+            --danger: #dc3545;
+            --success: #28a745;
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* 顶部控制栏 */
+        .control-bar {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        select, button {
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 15px;
+            border: 1px solid #ddd;
+        }
+
+        select { background-color: #fff; cursor: pointer; min-width: 120px;}
+        
+        button {
+            border: none;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        .btn-blue { background-color: var(--primary); }
+        .btn-purple { background-color: #6f42c1; }
+
+        /* 状态提示 */
+        .status-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 15px; height: 20px;}
+
+        /* 数据卡片 */
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        }
+
+        .card-label { font-size: 13px; color: #888; margin-bottom: 5px; }
+        .card-value { font-size: 24px; font-weight: 700; color: #222; }
+        .card-sub { font-size: 12px; color: #999; margin-top: 4px; }
+        .val-red { color: var(--danger); }
+        .val-green { color: var(--success); }
+
+        /* 图表 */
+        .chart-box {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            height: 500px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        /* 加载动画 */
+        .loader {
+            position: absolute; top:0; left:0; right:0; bottom:0;
+            background: rgba(255,255,255,0.95);
+            display: none;
+            justify-content: center; align-items: center;
+            flex-direction: column;
+            z-index: 10;
+            border-radius: 12px;
+        }
+        .spinner {
+            width: 30px; height: 30px; border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin-bottom: 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="control-bar">
+        <div>
+            <span style="font-weight:bold; margin-right:5px;">1. 选择精度/范围:</span>
+            <select id="timeRange">
+                <option value="1y">最近 1 年 (日线-超精准)</option>
+                <option value="5y" selected>最近 5 年 (日线-推荐)</option>
+                <option value="10y">最近 10 年 (日线/周线)</option>
+                <option value="max">全历史 (月线/季线-精度低)</option>
+            </select>
+        </div>
+        <div style="border-left: 1px solid #ddd; height: 30px; margin: 0 10px;"></div>
+        <div>
+            <span style="font-weight:bold; margin-right:5px;">2. 加载数据:</span>
+            <button class="btn-blue" onclick="loadData('^GSPC', '标普500')">标普500 (^GSPC)</button>
+            <button class="btn-purple" onclick="loadData('^IXIC', '纳斯达克 (^IXIC)')">纳斯达克 (^IXIC)</button>
+        </div>
+    </div>
+
+    <div class="status-text" id="statusMsg">请选择时间范围并点击按钮加载。要获取精确高点，请尽量选择“最近5年”。</div>
+
+    <div class="grid-stats">
+        <div class="card">
+            <div class="card-label">最新收盘价</div>
+            <div class="card-value" id="dispPrice">-</div>
+            <div class="card-sub" id="dispDate">-</div>
+        </div>
+        <div class="card">
+            <div class="card-label">期间最高点</div>
+            <div class="card-value" id="dispHigh">-</div>
+            <div class="card-sub">选定时间范围内的最高值</div>
+        </div>
+        <div class="card">
+            <div class="card-label">当前回撤</div>
+            <div class="card-value val-red" id="dispDD">-</div>
+        </div>
+        <div class="card">
+            <div class="card-label">期间最大回撤</div>
+            <div class="card-value val-red" id="dispMaxDD">-</div>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <div>正在连接 Yahoo Finance 数据源...</div>
+        </div>
+        <canvas id="myChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    async function loadData(symbol, name) {
+        const range = document.getElementById('timeRange').value;
+        const loader = document.getElementById('loader');
+        const statusMsg = document.getElementById('statusMsg');
+        
+        loader.style.display = 'flex';
+        statusMsg.innerText = `正在请求 ${range} 数据...`;
+
+        // 核心修正：使用动态 URL，并添加随机数防止代理缓存旧数据
+        // 如果选择 max，间隔设为 1mo (月线) 以确保能加载全部历史
+        // 如果选择 5y，间隔设为 1d (日线) 确保精准
+        let interval = '1d';
+        if (range === 'max') interval = '1mo'; // 强制全历史用月线，防止数据丢失
+        if (range === '10y') interval = '1wk'; // 10年用周线
+
+        const rand = Math.floor(Math.random() * 100000);
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&events=history&nocache=${rand}`;
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yahooUrl);
+
+        try {
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error("网络错误");
+            
+            const json = await response.json();
+            
+            if (!json.chart || !json.chart.result) throw new Error("Yahoo未返回数据");
+            
+            const result = json.chart.result[0];
+            const quotes = result.indicators.quote[0];
+            const times = result.timestamp;
+
+            if (!times || !quotes.close) throw new Error("数据格式错误");
+
+            // 数据清洗
+            let dates = [];
+            let prices = [];
+            
+            // 如果有 high 数据，我们在计算最高点时优先使用 high (日内高点)，而不只是 close (收盘价)
+            // Yahoo 的 daily 数据通常包含 high
+            const highs = quotes.high || quotes.close; 
+
+            for (let i = 0; i < times.length; i++) {
+                if (quotes.close[i] != null) {
+                    let d = new Date(times[i] * 1000);
+                    // 格式化日期 YYYY-MM-DD
+                    dates.push(d.toISOString().split('T')[0]);
+                    prices.push(parseFloat(quotes.close[i].toFixed(2)));
+                    // 这里我们为了绘图只存收盘价，但在计算最大值时，我们下面会用到 highs
+                }
+            }
+
+            // 修正高点计算逻辑：
+            // 为了找到你说的 24019.99，我们需要遍历 High 数组，而不仅仅是 Close 数组
+            // 注意：highs 数组可能也有 null，需要对应过滤
+            let trueMax = -Infinity;
+            let cleanHighs = [];
+             for (let i = 0; i < times.length; i++) {
+                if (highs[i] != null) {
+                    let h = parseFloat(highs[i]);
+                    if (h > trueMax) trueMax = h;
+                }
+            }
+
+            statusMsg.innerText = `成功加载数据。共 ${prices.length} 个数据点 (精度: ${interval === '1d' ? '日线' : (interval === '1wk' ? '周线' : '月线')})。`;
+            
+            calculateAndDraw(dates, prices, trueMax, name, range);
+
+        } catch (err) {
+            console.error(err);
+            statusMsg.innerText = "错误: " + err.message;
+            alert("无法获取数据，请尝试：\n1. 切换时间范围（例如改为5年）\n2. 检查网络");
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    function calculateAndDraw(dates, prices, trueMax, name, range) {
+        // 计算每一天的回撤（基于收盘价 vs 至今为止最高收盘价）
+        // 注意：回撤通常是基于收盘价计算的，但"历史最高点"显示可以使用盘中高点
+        
+        let drawdowns = [];
+        let runningMaxClose = -Infinity;
+        let maxDD = 0;
+
+        for (let p of prices) {
+            if (p > runningMaxClose) runningMaxClose = p;
+            let dd = ((p - runningMaxClose) / runningMaxClose) * 100;
+            drawdowns.push(dd);
+            if (dd < maxDD) maxDD = dd;
+        }
+
+        // 更新界面
+        const lastIdx = prices.length - 1;
+        document.getElementById('dispPrice').innerText = prices[lastIdx].toLocaleString();
+        document.getElementById('dispDate').innerText = dates[lastIdx];
+        
+        // 这里显示真正的历史最高（包含盘中高点）
+        document.getElementById('dispHigh').innerText = trueMax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        // 计算基于最高点的当前回撤
+        // 严格来说，回撤 = (当前价 - 历史最高) / 历史最高
+        // 如果用盘中高点 24019 计算，回撤会比用收盘高点计算更大一点，这里我们用收盘价逻辑保持图表一致
+        const currDD = drawdowns[lastIdx];
+        
+        const elDD = document.getElementById('dispDD');
+        elDD.innerText = currDD.toFixed(2) + "%";
+        elDD.style.color = currDD >= 0 ? 'green' : '#dc3545';
+
+        document.getElementById('dispMaxDD').innerText = maxDD.toFixed(2) + "%";
+
+        // 绘图
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: '价格',
+                        data: prices,
+                        borderColor: '#007bff',
+                        borderWidth: 1.5,
+                        yAxisID: 'y1',
+                        pointRadius: 0
+                    },
+                    {
+                        label: '回撤 %',
+                        data: drawdowns,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        borderWidth: 1,
+                        fill: true,
+                        yAxisID: 'y',
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: { display: true, text: `${name} - ${range} 走势与回撤` },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let val = context.parsed.y;
+                                if (context.dataset.label.includes('回撤')) return `回撤: ${val.toFixed(2)}%`;
+                                return `价格: ${val.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 10 } },
+                    y: { 
+                        type: 'linear', position: 'left', max: 5, 
+                        title: {display:true, text:'回撤幅度 (%)'}
+                    },
+                    y1: { 
+                        type: 'linear', position: 'right',
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
