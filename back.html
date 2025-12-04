@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美股回撤计算器 (新浪/腾讯稳定版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: "Microsoft YaHei", sans-serif; background: #f2f2f2; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        h2 { text-align: center; margin-top: 0; color: #d81e06; }
+        
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        button {
+            padding: 12px 20px; font-size: 15px; font-weight: bold; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:active { opacity: 0.8; }
+        .btn-sina { background: #d81e06; } /* 新浪红 */
+        .btn-qq { background: #1296db; }   /* 腾讯蓝 */
+
+        .status-box { 
+            text-align: center; margin-bottom: 15px; font-size: 14px; color: #666; 
+            padding: 8px; background: #f9f9f9; border-radius: 4px;
+        }
+
+        .stats { display: flex; justify-content: space-around; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;}
+        .stat-item { text-align: center; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); width: 45%; }
+        .stat-val { font-size: 24px; font-weight: bold; margin: 5px 0; }
+        .red { color: #d0021b; } .green { color: #179c17; }
+
+        .chart-area { position: relative; height: 450px; width: 100%; }
+        
+        /* 调试日志区域 */
+        #debug-log {
+            margin-top: 20px; padding: 10px; background: #333; color: #0f0; 
+            font-family: monospace; font-size: 12px; height: 100px; overflow-y: scroll;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>美股指数回撤 (国内稳定版)</h2>
+    
+    <div class="status-box" id="statusMsg">请点击下方按钮开始获取数据</div>
+
+    <div class="btn-group">
+        <button class="btn-sina" onclick="loadData('SINA', 'SPX')">标普500 (新浪)</button>
+        <button class="btn-sina" onclick="loadData('SINA', 'NDX')">纳指100 (新浪)</button>
+        <button class="btn-sina" onclick="loadData('SINA', 'IXIC')">纳指综合 (新浪)</button>
+        <button class="btn-sina" onclick="loadData('SINA', 'DJI')">道琼斯 (新浪)</button>
+    </div>
+    <div style="text-align:center; margin-bottom:15px; font-size:12px; color:#999;">如果新浪无反应，请尝试腾讯源：</div>
+    <div class="btn-group">
+        <button class="btn-qq" onclick="loadData('TENCENT', 'IXIC')">纳指综合 (腾讯)</button>
+        <button class="btn-qq" onclick="loadData('TENCENT', 'DJI')">道琼斯 (腾讯)</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-item">
+            <div>当前点位</div>
+            <div class="stat-val" id="val-price">-</div>
+            <div style="font-size:12px; color:#999;" id="val-date">-</div>
+        </div>
+        <div class="stat-item">
+            <div>区间最高点</div>
+            <div class="stat-val" id="val-high">-</div>
+        </div>
+        <div class="stat-item">
+            <div>当前回撤</div>
+            <div class="stat-val red" id="val-dd">-</div>
+        </div>
+        <div class="stat-item">
+            <div>最大回撤</div>
+            <div class="stat-val red" id="val-max-dd">-</div>
+        </div>
+    </div>
+
+    <div class="chart-area">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div id="debug-log">日志窗口 (用于排查故障):<br></div>
+</div>
+
+<script>
+    let myChart = null;
+    
+    // 简单的日志输出函数
+    function log(msg) {
+        const box = document.getElementById('debug-log');
+        const time = new Date().toLocaleTimeString();
+        box.innerHTML += `[${time}] ${msg}<br>`;
+        box.scrollTop = box.scrollHeight;
+        console.log(msg);
+    }
+
+    // 配置表
+    const CONFIG = {
+        SINA: {
+            SPX: { symbol: '.INX', name: '标普500' },
+            NDX: { symbol: '.NDX', name: '纳指100' },
+            IXIC: { symbol: '.IXIC', name: '纳指综合' },
+            DJI: { symbol: '.DJI', name: '道琼斯' }
+        },
+        TENCENT: {
+            IXIC: { symbol: 'us.IXIC', name: '纳指综合' },
+            DJI: { symbol: 'us.DJI', name: '道琼斯' }
+        }
+    };
+
+    // 核心加载函数
+    function loadData(source, type) {
+        const status = document.getElementById('statusMsg');
+        status.innerText = "正在初始化...";
+        log(`开始请求: ${source} - ${type}`);
+
+        if (source === 'SINA') {
+            loadSina(CONFIG.SINA[type]);
+        } else {
+            loadTencent(CONFIG.TENCENT[type]);
+        }
+    }
+
+    // --- 新浪财经加载器 (Script Tag 注入) ---
+    function loadSina(item) {
+        const symbol = item.symbol;
+        const varName = `sina_${Date.now()}`;
+        // 新浪API地址，获取全量日线
+        const url = `https://stock.finance.sina.com.cn/usstock/api/jsonp_v2.php/window.${varName}=/US_MinKService.getDailyK?symbol=${symbol}&___=${Math.random()}`;
+
+        log(`正在连接新浪财经: ${url}`);
+        
+        const script = document.createElement('script');
+        script.src = url;
+        
+        script.onload = () => {
+            log("新浪脚本加载完成，正在解析...");
+            const data = window[varName];
+            if (data) {
+                // 新浪格式: [{d:"2023-01-01", o:"...", c:"...", h:"...", l:"..."}, ...]
+                // 注意：新浪返回的是逆序(最新在前面)或者正序，需要检查
+                let rawList = Array.isArray(data) ? data : [];
+                if (rawList.length === 0) {
+                    log("错误：新浪返回数据为空");
+                    alert("新浪返回数据为空，请尝试腾讯源");
+                    return;
+                }
+
+                // 确保按日期升序排列 (旧->新)
+                rawList.sort((a, b) => new Date(a.d) - new Date(b.d));
+
+                let dates = [], prices = [], highs = [];
+                rawList.forEach(k => {
+                    dates.push(k.d);
+                    prices.push(parseFloat(k.c));
+                    highs.push(parseFloat(k.h));
+                });
+
+                log(`解析成功: 获取到 ${prices.length} 条数据`);
+                calculateAndDraw(dates, prices, highs, item.name + " (新浪)");
+                
+                // 清理
+                delete window[varName];
+                document.body.removeChild(script);
+            } else {
+                log("错误：未找到回调变量");
+            }
+        };
+
+        script.onerror = () => {
+            log("错误：新浪脚本加载失败 (网络拦截)");
+            document.getElementById('statusMsg').innerText = "加载失败，请检查网络";
+            alert("无法连接新浪财经，请检查网络或使用腾讯源。");
+        };
+
+        document.body.appendChild(script);
+    }
+
+    // --- 腾讯财经加载器 ---
+    function loadTencent(item) {
+        const symbol = item.symbol;
+        const varName = `v_${Date.now()}`;
+        // 腾讯全量数据接口
+        const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=${varName}&param=${symbol},day,,,100000,qfq`;
+
+        log(`正在连接腾讯财经: ${url}`);
+
+        const script = document.createElement('script');
+        script.src = url;
+
+        script.onload = () => {
+            log("腾讯脚本加载完成");
+            const res = window[varName];
+            if (res && res.data && res.data[symbol]) {
+                const dayData = res.data[symbol].day || res.data[symbol].qfqday;
+                if (!dayData) {
+                    log("错误：腾讯数据格式异常");
+                    return;
+                }
+
+                let dates = [], prices = [], highs = [];
+                dayData.forEach(item => {
+                    // 腾讯日期格式 20230101 -> 2023-01-01
+                    let d = item[0];
+                    let dateStr = `${d.substring(0,4)}-${d.substring(4,6)}-${d.substring(6,8)}`;
+                    dates.push(dateStr);
+                    prices.push(parseFloat(item[2])); // 收盘
+                    highs.push(parseFloat(item[3]));  // 最高
+                });
+
+                log(`解析成功: 获取到 ${prices.length} 条数据`);
+                calculateAndDraw(dates, prices, highs, item.name + " (腾讯)");
+                
+                delete window[varName];
+                document.body.removeChild(script);
+            } else {
+                log("错误：腾讯返回数据结构不对");
+            }
+        };
+        
+        script.onerror = () => {
+            log("错误：腾讯连接被阻断");
+            alert("腾讯源连接失败");
+        };
+
+        document.body.appendChild(script);
+    }
+
+    // 计算与绘图
+    function calculateAndDraw(dates, prices, highs, title) {
+        document.getElementById('statusMsg').innerText = `加载成功: ${title}`;
+        
+        let drawdowns = [];
+        let runningMaxClose = -Infinity;
+        let maxDD = 0;
+        let trueMax = -Infinity;
+
+        // 计算区间最高
+        for (let h of highs) {
+            if (h > trueMax) trueMax = h;
+        }
+
+        // 计算回撤
+        for (let p of prices) {
+            if (p > runningMaxClose) runningMaxClose = p;
+            let dd = ((p - runningMaxClose) / runningMaxClose) * 100;
+            drawdowns.push(dd);
+            if (dd < maxDD) maxDD = dd;
+        }
+
+        const last = prices.length - 1;
+
+        // 更新界面
+        document.getElementById('val-price').innerText = prices[last].toLocaleString();
+        document.getElementById('val-date').innerText = dates[last];
+        document.getElementById('val-high').innerText = trueMax.toLocaleString();
+        
+        const currDD = drawdowns[last];
+        const elDD = document.getElementById('val-dd');
+        elDD.innerText = currDD.toFixed(2) + "%";
+        elDD.style.color = currDD >= 0 ? 'green' : 'red';
+        
+        document.getElementById('val-max-dd').innerText = maxDD.toFixed(2) + "%";
+
+        // 绘图
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: '指数点位',
+                        data: prices,
+                        borderColor: '#333',
+                        borderWidth: 1,
+                        pointRadius: 0,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: '回撤 %',
+                        data: drawdowns,
+                        borderColor: 'red',
+                        backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                        borderWidth: 1,
+                        fill: true,
+                        pointRadius: 0,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 8 } },
+                    y: { position: 'left', max: 5 },
+                    y1: { position: 'right', grid: { display: false } }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
