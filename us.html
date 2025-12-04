@@ -3,249 +3,249 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股指数回撤计算器 (含纳指100)</title>
+    <title>美股回撤计算器 (新浪/腾讯 + 时间选择)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --bg-color: #f0f2f5;
-            --card-bg: #ffffff;
-            --primary: #007bff;
-            --danger: #dc3545;
-            --success: #28a745;
-        }
-
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        body { font-family: "Microsoft YaHei", sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         
-        /* 顶部控制栏 */
+        h2 { text-align: center; margin-top: 0; color: #333; margin-bottom: 25px; }
+
+        /* 控制栏 */
         .control-bar {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
+            background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;
+            border: 1px solid #eee; display: flex; flex-direction: column; align-items: center; gap: 15px;
         }
 
-        select, button {
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-size: 14px;
-            border: 1px solid #ddd;
+        .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+
+        select {
+            padding: 10px 15px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; font-weight: bold; color: #555; cursor: pointer;
         }
 
-        select { background-color: #fff; cursor: pointer; min-width: 120px; font-weight: bold;}
-        
         button {
-            border: none;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
+            padding: 10px 18px; font-size: 14px; font-weight: bold; color: #fff; border: none; border-radius: 6px; cursor: pointer;
             transition: transform 0.1s, opacity 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         button:active { transform: scale(0.98); }
         button:hover { opacity: 0.9; }
-
-        /* 按钮颜色区分 */
-        .btn-spx { background-color: #0056b3; } /* 深蓝 */
-        .btn-ixic { background-color: #6610f2; } /* 紫色 */
-        .btn-ndx { background-color: #17a2b8; } /* 青色/湖蓝 */
-
-        /* 状态提示 */
-        .status-text { text-align: center; font-size: 13px; color: #666; margin-bottom: 15px; height: 20px;}
-
-        /* 数据卡片 */
-        .grid-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-            border-bottom: 3px solid transparent;
-        }
         
-        /* 卡片底部装饰条 */
-        .card:nth-child(1) { border-color: #ccc; }
-        .card:nth-child(2) { border-color: var(--primary); }
-        .card:nth-child(3) { border-color: var(--danger); }
-        .card:nth-child(4) { border-color: var(--danger); }
+        .btn-sina { background: #d81e06; box-shadow: 0 2px 5px rgba(216, 30, 6, 0.2); }
+        .btn-qq { background: #1296db; box-shadow: 0 2px 5px rgba(18, 150, 219, 0.2); }
 
-        .card-label { font-size: 13px; color: #888; margin-bottom: 5px; }
-        .card-value { font-size: 24px; font-weight: 700; color: #222; }
-        .card-sub { font-size: 12px; color: #999; margin-top: 4px; }
-        .val-red { color: var(--danger); }
-        .val-green { color: var(--success); }
+        .status-msg { font-size: 13px; color: #666; height: 20px; text-align: center; }
 
-        /* 图表 */
-        .chart-box {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
-            height: 500px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            position: relative;
+        /* 数据展示 */
+        .stats { display: flex; justify-content: space-between; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .stat-item { 
+            text-align: center; background: #fff; padding: 15px; border-radius: 10px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex: 1; min-width: 140px; border: 1px solid #f0f0f0;
         }
+        .stat-label { font-size: 13px; color: #888; margin-bottom: 5px; }
+        .stat-val { font-size: 22px; font-weight: bold; color: #333; }
+        .red { color: #d0021b; } .green { color: #179c17; }
 
-        /* 加载动画 */
-        .loader {
-            position: absolute; top:0; left:0; right:0; bottom:0;
-            background: rgba(255,255,255,0.95);
-            display: none;
-            justify-content: center; align-items: center;
-            flex-direction: column;
-            z-index: 10;
-            border-radius: 12px;
+        .chart-area { position: relative; height: 450px; width: 100%; margin-bottom: 20px; }
+        
+        #debug-log {
+            font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 10px; height: 60px; overflow-y: auto; font-family: monospace;
         }
-        .spinner {
-            width: 30px; height: 30px; border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary); border-radius: 50%;
-            animation: spin 0.8s linear infinite; margin-bottom: 10px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="text-align:center; color:#444; margin-bottom:20px;">指数回撤分析工具</h2>
+    <h2>📈 美股指数回撤分析</h2>
     
     <div class="control-bar">
-        <div>
-            <span style="font-weight:bold; margin-right:5px; color:#555;">1. 时间范围:</span>
+        <div class="row">
+            <span style="font-weight:bold;">1. 时间范围:</span>
             <select id="timeRange">
-                <option value="1y">最近 1 年 (日线-超精准)</option>
-                <option value="5y" selected>最近 5 年 (日线-推荐)</option>
-                <option value="10y">最近 10 年 (日线/周线)</option>
-                <option value="max">全历史 (月线-看大周期)</option>
+                <option value="250">最近 1 年</option>
+                <option value="1250" selected>最近 5 年 (推荐)</option>
+                <option value="2500">最近 10 年</option>
+                <option value="max">全历史数据</option>
             </select>
         </div>
-        <div style="border-left: 1px solid #ddd; height: 30px; margin: 0 5px;"></div>
-        <div>
-            <span style="font-weight:bold; margin-right:5px; color:#555;">2. 选择指数:</span>
-            <button class="btn-spx" onclick="loadData('^GSPC', '标普500 (^GSPC)')">标普500</button>
-            <button class="btn-ixic" onclick="loadData('^IXIC', '纳指综合 (^IXIC)')">纳指综合</button>
-            <button class="btn-ndx" onclick="loadData('^NDX', '纳指100 (^NDX)')">纳指100</button>
+        
+        <div style="width: 100%; height: 1px; background: #eee;"></div>
+
+        <div class="row">
+            <span style="font-weight:bold;">2. 新浪源 (首选):</span>
+            <button class="btn-sina" onclick="loadData('SINA', 'SPX')">标普500</button>
+            <button class="btn-sina" onclick="loadData('SINA', 'NDX')">纳指100</button>
+            <button class="btn-sina" onclick="loadData('SINA', 'IXIC')">纳指综合</button>
+            <button class="btn-sina" onclick="loadData('SINA', 'DJI')">道琼斯</button>
+        </div>
+        <div class="row">
+            <span style="font-weight:bold;">3. 腾讯源 (备用):</span>
+            <button class="btn-qq" onclick="loadData('TENCENT', 'IXIC')">纳指综合</button>
+            <button class="btn-qq" onclick="loadData('TENCENT', 'DJI')">道琼斯</button>
         </div>
     </div>
 
-    <div class="status-text" id="statusMsg">准备就绪。建议选择“最近5年”以获取精准高点数据。</div>
+    <div class="status-msg" id="statusMsg">准备就绪</div>
 
-    <div class="grid-stats">
-        <div class="card">
-            <div class="card-label">最新收盘价</div>
-            <div class="card-value" id="dispPrice">-</div>
-            <div class="card-sub" id="dispDate">-</div>
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-label">最新收盘价</div>
+            <div class="stat-val" id="val-price">-</div>
+            <div class="stat-label" id="val-date" style="font-size:11px; margin-top:3px;">-</div>
         </div>
-        <div class="card">
-            <div class="card-label">期间最高点 (盘中)</div>
-            <div class="card-value" id="dispHigh">-</div>
-            <div class="card-sub">范围内的最高价</div>
+        <div class="stat-item">
+            <div class="stat-label">区间最高点</div>
+            <div class="stat-val" id="val-high">-</div>
         </div>
-        <div class="card">
-            <div class="card-label">当前回撤幅度</div>
-            <div class="card-value val-red" id="dispDD">-</div>
+        <div class="stat-item">
+            <div class="stat-label">当前回撤</div>
+            <div class="stat-val red" id="val-dd">-</div>
         </div>
-        <div class="card">
-            <div class="card-label">期间最大回撤</div>
-            <div class="card-value val-red" id="dispMaxDD">-</div>
+        <div class="stat-item">
+            <div class="stat-label">区间最大回撤</div>
+            <div class="stat-val red" id="val-max-dd">-</div>
         </div>
     </div>
 
-    <div class="chart-box">
-        <div class="loader" id="loader">
-            <div class="spinner"></div>
-            <div>正在从 Yahoo Finance 下载数据...</div>
-        </div>
+    <div class="chart-area">
         <canvas id="myChart"></canvas>
     </div>
+
+    <div id="debug-log">运行日志...</div>
 </div>
 
 <script>
     let myChart = null;
+    
+    function log(msg) {
+        const box = document.getElementById('debug-log');
+        box.innerHTML = `> ${msg}<br>` + box.innerHTML;
+        console.log(msg);
+    }
 
-    async function loadData(symbol, name) {
+    const CONFIG = {
+        SINA: {
+            SPX: { symbol: '.INX', name: '标普500' },
+            NDX: { symbol: '.NDX', name: '纳指100' },
+            IXIC: { symbol: '.IXIC', name: '纳指综合' },
+            DJI: { symbol: '.DJI', name: '道琼斯' }
+        },
+        TENCENT: {
+            IXIC: { symbol: 'us.IXIC', name: '纳指综合' },
+            DJI: { symbol: 'us.DJI', name: '道琼斯' }
+        }
+    };
+
+    function loadData(source, type) {
+        const status = document.getElementById('statusMsg');
         const range = document.getElementById('timeRange').value;
-        const loader = document.getElementById('loader');
-        const statusMsg = document.getElementById('statusMsg');
+        const rangeText = document.getElementById('timeRange').options[document.getElementById('timeRange').selectedIndex].text;
         
-        loader.style.display = 'flex';
-        statusMsg.innerText = `正在请求 ${name} 的 ${range} 数据...`;
+        status.innerText = `正在连接 ${source} 获取 ${CONFIG[source][type].name} (${rangeText})...`;
+        status.style.color = source === 'SINA' ? '#d81e06' : '#1296db';
+        
+        log(`开始请求: ${source} - ${type}, 范围: ${range}`);
 
-        // 动态设置间隔：全历史用月线防止数据丢失，5年/1年用日线保证精准
-        let interval = '1d';
-        if (range === 'max') interval = '1mo'; 
-        if (range === '10y') interval = '1wk'; 
-
-        const rand = Math.floor(Math.random() * 100000);
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}&events=history&nocache=${rand}`;
-        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(yahooUrl);
-
-        try {
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error("网络连接超时或代理繁忙");
-            
-            const json = await response.json();
-            
-            if (!json.chart || !json.chart.result) throw new Error("Yahoo暂无该指数数据");
-            
-            const result = json.chart.result[0];
-            const quotes = result.indicators.quote[0];
-            const times = result.timestamp;
-
-            if (!times || !quotes.close) throw new Error("数据包损坏，请重试");
-
-            let dates = [];
-            let prices = [];
-            // 获取盘中最高价数组（如果可用），用于计算精准高点
-            const highs = quotes.high || quotes.close; 
-
-            for (let i = 0; i < times.length; i++) {
-                if (quotes.close[i] != null) {
-                    let d = new Date(times[i] * 1000);
-                    // 格式化日期
-                    dates.push(d.toISOString().split('T')[0]);
-                    prices.push(parseFloat(quotes.close[i].toFixed(2)));
-                }
-            }
-
-            // 计算真实的期间最高点（遍历 High 数组）
-            let trueMax = -Infinity;
-            for (let i = 0; i < times.length; i++) {
-                if (highs[i] != null) {
-                    let h = parseFloat(highs[i]);
-                    if (h > trueMax) trueMax = h;
-                }
-            }
-
-            statusMsg.innerText = `成功加载 ${name} 数据 (${prices.length} 条记录)`;
-            
-            calculateAndDraw(dates, prices, trueMax, name, range);
-
-        } catch (err) {
-            console.error(err);
-            statusMsg.innerText = "❌ 错误: " + err.message;
-            alert("数据获取失败，可能原因：\n1. 网络代理响应超时（请重试）\n2. 时间范围数据量过大");
-        } finally {
-            loader.style.display = 'none';
+        if (source === 'SINA') {
+            loadSina(CONFIG.SINA[type], range);
+        } else {
+            loadTencent(CONFIG.TENCENT[type], range);
         }
     }
 
-    function calculateAndDraw(dates, prices, trueMax, name, range) {
+    // --- 新浪加载逻辑 ---
+    function loadSina(item, range) {
+        const varName = `sina_${Date.now()}`;
+        // 新浪API不支持直接limit，所以我们请求全量，然后在前端截取
+        const url = `https://stock.finance.sina.com.cn/usstock/api/jsonp_v2.php/window.${varName}=/US_MinKService.getDailyK?symbol=${item.symbol}&___=${Math.random()}`;
+        
+        const script = document.createElement('script');
+        script.src = url;
+        
+        script.onload = () => {
+            const data = window[varName];
+            if (data && Array.isArray(data)) {
+                // 1. 排序：确保按日期从旧到新
+                data.sort((a, b) => new Date(a.d) - new Date(b.d));
+
+                // 2. 根据时间范围截取数据 (Client-side slicing)
+                let slicedData = data;
+                if (range !== 'max') {
+                    const limit = parseInt(range);
+                    if (data.length > limit) {
+                        slicedData = data.slice(-limit);
+                    }
+                }
+
+                let dates = [], prices = [], highs = [];
+                slicedData.forEach(k => {
+                    dates.push(k.d);
+                    prices.push(parseFloat(k.c));
+                    highs.push(parseFloat(k.h));
+                });
+
+                log(`新浪: 获取全量数据 ${data.length} 条，截取后剩余 ${slicedData.length} 条`);
+                calculateAndDraw(dates, prices, highs, item.name + " (新浪)");
+                delete window[varName];
+                document.body.removeChild(script);
+            } else {
+                alert("新浪返回数据为空");
+            }
+        };
+        script.onerror = () => { alert("新浪连接失败"); document.body.removeChild(script); };
+        document.body.appendChild(script);
+    }
+
+    // --- 腾讯加载逻辑 ---
+    function loadTencent(item, range) {
+        const varName = `v_${Date.now()}`;
+        // 腾讯支持 limit 参数: param=代码,day,,,数量,qfq
+        // 如果是 max，我们传一个很大的数
+        const limitParam = (range === 'max') ? 100000 : range;
+        
+        const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=${varName}&param=${item.symbol},day,,,${limitParam},qfq`;
+
+        const script = document.createElement('script');
+        script.src = url;
+
+        script.onload = () => {
+            const res = window[varName];
+            if (res && res.data && res.data[item.symbol]) {
+                const dayData = res.data[item.symbol].day || res.data[item.symbol].qfqday;
+                
+                let dates = [], prices = [], highs = [];
+                dayData.forEach(item => {
+                    let d = item[0]; // 20230101
+                    let dateStr = `${d.substring(0,4)}-${d.substring(4,6)}-${d.substring(6,8)}`;
+                    dates.push(dateStr);
+                    prices.push(parseFloat(item[2]));
+                    highs.push(parseFloat(item[3]));
+                });
+
+                log(`腾讯: 成功获取 ${prices.length} 条数据`);
+                calculateAndDraw(dates, prices, highs, item.name + " (腾讯)");
+                delete window[varName];
+                document.body.removeChild(script);
+            } else {
+                alert("腾讯数据格式异常");
+            }
+        };
+        script.onerror = () => { alert("腾讯连接失败"); document.body.removeChild(script); };
+        document.body.appendChild(script);
+    }
+
+    // --- 通用计算与绘图 ---
+    function calculateAndDraw(dates, prices, highs, title) {
+        document.getElementById('statusMsg').innerText = `✅ 成功加载: ${title}`;
+        
         let drawdowns = [];
-        let runningMaxClose = -Infinity; // 用于计算回撤曲线的收盘高点
+        let runningMaxClose = -Infinity;
         let maxDD = 0;
+        let trueMax = -Infinity;
+
+        // 计算【当前选定范围内】的最高点
+        for (let h of highs) {
+            if (h > trueMax) trueMax = h;
+        }
 
         for (let p of prices) {
             if (p > runningMaxClose) runningMaxClose = p;
@@ -254,28 +254,21 @@
             if (dd < maxDD) maxDD = dd;
         }
 
-        const lastIdx = prices.length - 1;
+        const last = prices.length - 1;
+
+        // 更新数值面板
+        document.getElementById('val-price').innerText = prices[last].toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('val-date').innerText = dates[last];
+        document.getElementById('val-high').innerText = trueMax.toLocaleString(undefined, {minimumFractionDigits: 2});
         
-        // 1. 更新面板数值
-        document.getElementById('dispPrice').innerText = prices[lastIdx].toLocaleString(undefined, {minimumFractionDigits: 2});
-        document.getElementById('dispDate').innerText = dates[lastIdx];
-        
-        // 显示期间盘中最高
-        document.getElementById('dispHigh').innerText = trueMax.toLocaleString(undefined, {minimumFractionDigits: 2});
-        
-        // 2. 显示当前回撤
-        const currDD = drawdowns[lastIdx];
-        const elDD = document.getElementById('dispDD');
+        const currDD = drawdowns[last];
+        const elDD = document.getElementById('val-dd');
         elDD.innerText = currDD.toFixed(2) + "%";
-        elDD.style.color = currDD >= 0 ? '#28a745' : '#dc3545';
+        elDD.style.color = currDD >= 0 ? '#179c17' : '#d0021b';
         
-        // 如果数据有点延迟，导致当前点比历史最高低，但回撤算出来是0（比如刚创新高），强行修正显示逻辑
-        // 这里的 drawdowns 是基于收盘价计算的，如果基于盘中高点计算，可以用 (prices[lastIdx] - trueMax)/trueMax
-        // 为了和图表对应，我们暂时保持图表逻辑（收盘价回撤）。
+        document.getElementById('val-max-dd').innerText = maxDD.toFixed(2) + "%";
 
-        document.getElementById('dispMaxDD').innerText = maxDD.toFixed(2) + "%";
-
-        // 3. 绘图
+        // 绘图
         const ctx = document.getElementById('myChart').getContext('2d');
         if (myChart) myChart.destroy();
 
@@ -285,24 +278,24 @@
                 labels: dates,
                 datasets: [
                     {
-                        label: '指数价格',
+                        label: '指数点位',
                         data: prices,
-                        borderColor: '#007bff',
+                        borderColor: '#333',
                         borderWidth: 1.5,
-                        yAxisID: 'y1',
                         pointRadius: 0,
-                        pointHoverRadius: 4
+                        pointHoverRadius: 4,
+                        yAxisID: 'y1'
                     },
                     {
                         label: '回撤 %',
                         data: drawdowns,
-                        borderColor: '#dc3545',
-                        backgroundColor: 'rgba(220, 53, 69, 0.15)', // 浅红背景
+                        borderColor: '#d0021b',
+                        backgroundColor: 'rgba(208, 2, 27, 0.1)',
                         borderWidth: 1,
                         fill: true,
-                        yAxisID: 'y',
                         pointRadius: 0,
-                        pointHoverRadius: 4
+                        pointHoverRadius: 4,
+                        yAxisID: 'y'
                     }
                 ]
             },
@@ -311,7 +304,7 @@
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    title: { display: true, text: `${name} - ${range} 走势图` },
+                    title: { display: true, text: title + ' 走势与回撤' },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -326,8 +319,7 @@
                     x: { ticks: { maxTicksLimit: 10 } },
                     y: { 
                         type: 'linear', position: 'left', max: 5, 
-                        title: {display:true, text:'回撤幅度 (%)'},
-                        grid: { color: '#f0f0f0' }
+                        title: { display: true, text: '回撤幅度 (%)' }
                     },
                     y1: { 
                         type: 'linear', position: 'right',
