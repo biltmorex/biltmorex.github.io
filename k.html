@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双骰子凯利投资战 v2.4</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-pink: #ec4899;
+            --accent-green: #10b981;
+            --accent-gold: #f59e0b;
+            --dice-size: 80px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 顶部栏 */
+        .header-bar {
+            width: 100%; max-width: 1000px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 15px;
+            flex-wrap: wrap; gap: 15px;
+        }
+        .title-group h1 { margin: 0; font-size: 1.5rem; background: linear-gradient(90deg, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .title-group .subtitle { color: var(--text-secondary); font-size: 0.85rem; margin: 5px 0 0 0; }
+        .status-group { display: flex; align-items: center; gap: 15px; }
+        .round-badge { background: #334155; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-family: monospace; font-size: 1.1rem; color: var(--accent-gold); border: 1px solid #475569; }
+        .reset-btn { background: transparent; border: 1px solid #475569; color: var(--text-secondary); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
+        .reset-btn:hover { border-color: #fff; color: #fff; }
+
+        /* 设置区 */
+        .settings-card {
+            background: var(--panel-bg); border-radius: 16px; padding: 20px;
+            width: 100%; max-width: 900px; margin-bottom: 25px;
+            border: 1px solid #334155; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .prob-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .win-rate-badge { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 12px; border-radius: 20px; font-weight: bold; font-family: monospace; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .win-rate-badge.bad { color: var(--accent-pink); background: rgba(236, 72, 153, 0.1); border-color: rgba(236, 72, 153, 0.3); }
+        .number-selector { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+        .num-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; height: 65px; background: #334155; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+        .num-btn span { font-size: 1.2rem; font-weight: bold; color: #cbd5e1; }
+        .num-btn .dots { font-size: 8px; letter-spacing: 1px; color: #64748b; margin-top: 4px; }
+        .num-btn.active { background: var(--accent-gold); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3); }
+        .num-btn.active span { color: #000; } .num-btn.active .dots { color: #78350f; }
+
+        /* 玩家区 */
+        .players-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1000px; margin-bottom: 30px; }
+        .player-card { background: var(--panel-bg); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; border: 1px solid #334155; transition: transform 0.2s; }
+        .player-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+        .card-kelly::before { background: var(--accent-blue); }
+        .card-daughter::before { background: var(--accent-pink); }
+        .card-father::before { background: var(--accent-green); }
+
+        .p-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .p-name { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+        .p-balance { font-size: 1.6rem; font-weight: 800; font-family: 'Courier New', monospace; }
+
+        /* 双输入框布局 */
+        .bet-row { display: flex; gap: 10px; margin-top: 5px; }
+        .bet-group { flex: 1; position: relative; }
+        .bet-label { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .prefix { position: absolute; left: 10px; color: #64748b; font-size: 0.9rem; pointer-events: none;}
+        .suffix { position: absolute; right: 10px; color: #64748b; font-size: 0.9rem; pointer-events: none;}
+        
+        input[type="number"] {
+            width: 100%; background: #0f172a; border: 1px solid #475569;
+            padding: 10px 25px 10px 25px; border-radius: 8px;
+            color: #fff; font-size: 1rem; box-sizing: border-box; transition: border 0.2s;
+        }
+        input[type="number"]:focus { outline: none; border-color: var(--accent-blue); }
+        
+        /* 凯利隐藏层 */
+        .secret-content { transition: filter 0.3s; }
+        .blur-overlay { filter: blur(12px); user-select: none; pointer-events: none; }
+        .revealed { filter: blur(0); pointer-events: auto; }
+        .toggle-eye { position: absolute; right: 0; top: -25px; background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--accent-blue); display: flex; align-items: center; gap: 5px; }
+
+        .result-tag { display: block; margin-top: 10px; font-size: 0.9rem; font-weight: bold; min-height: 20px; text-align: right; }
+        .tag-win { color: var(--accent-green); } .tag-loss { color: var(--accent-pink); }
+
+        /* 骰子与按钮 */
+        .dice-stage { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-bottom: 30px; padding: 20px; }
+        .dice-wrapper { display: flex; gap: 40px; perspective: 800px; }
+        .cube { width: var(--dice-size); height: var(--dice-size); position: relative; transform-style: preserve-3d; transition: transform 1.5s cubic-bezier(0.19, 1, 0.22, 1); }
+        .face { position: absolute; width: 100%; height: 100%; background: #f1f5f9; border-radius: 12px; border: 1px solid #cbd5e1; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 6px; box-sizing: border-box; }
+        .dot { background: #1e293b; border-radius: 50%; width: 16px; height: 16px; margin: auto; }
+        .face[data-val="1"] .dot, .face[data-val="4"] .dot { background: #ef4444; } .face[data-val="1"] .dot { width: 24px; height: 24px; }
+        
+        .front{transform:rotateY(0deg) translateZ(40px)}.back{transform:rotateY(180deg) translateZ(40px)}.right{transform:rotateY(90deg) translateZ(40px)}.left{transform:rotateY(-90deg) translateZ(40px)}.top{transform:rotateX(90deg) translateZ(40px)}.bottom{transform:rotateX(-90deg) translateZ(40px)}
+
+        .action-btn { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; padding: 16px 60px; border-radius: 50px; color: white; font-size: 1.2rem; font-weight: bold; cursor: pointer; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3); transition: transform 0.1s, box-shadow 0.2s; }
+        .action-btn:hover { box-shadow: 0 15px 35px rgba(245, 158, 11, 0.4); transform: translateY(-2px); }
+        .action-btn:active { transform: translateY(2px); }
+        .action-btn:disabled { background: #475569; box-shadow: none; cursor: not-allowed; opacity: 0.7; }
+
+        .chart-box { width: 100%; max-width: 1000px; height: 350px; background: var(--panel-bg); border: 1px solid #334155; border-radius: 16px; padding: 15px; box-sizing: border-box; }
+        canvas { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="title-group">
+            <h1>🎲 凯利公式 vs 直觉 (v2.4)</h1>
+            <p class="subtitle">比例锁定模式 | 体验复利增长</p>
+        </div>
+        <div class="status-group">
+            <div class="round-badge">第 <span id="currentRoundDisplay">0</span> 轮</div>
+            <button class="reset-btn" onclick="resetGame()"><span>🔄</span> 重置</button>
+        </div>
+    </div>
+
+    <!-- 规则 -->
+    <div class="settings-card">
+        <div class="prob-header">
+            <span style="font-weight:bold; color:#cbd5e1;">🎯 选择“获胜点数” (2-12)</span>
+            <span id="winRateBadge" class="win-rate-badge">胜率: 0.0%</span>
+        </div>
+        <div class="number-selector" id="numSelector"></div>
+        <div style="text-align:center; font-size:0.8rem; color:#64748b; margin-top:10px;">提示: 7概率最高(6/36)</div>
+    </div>
+
+    <div class="players-grid">
+        <!-- 凯利 -->
+        <div class="player-card card-kelly">
+            <div class="p-header">
+                <span class="p-name"><span style="color:var(--accent-blue)">🤖</span> 凯利</span>
+                <span class="p-balance" id="bal-kelly">1,000</span>
+            </div>
+            <div style="margin-top:20px; position:relative;">
+                <button class="toggle-eye" onclick="toggleKelly()">
+                    <span id="eye-icon">👁️</span> <span id="eye-text">查看答案</span>
+                </button>
+                <div id="kelly-secret-area" class="secret-content blur-overlay">
+                    <div class="bet-row">
+                        <div class="bet-group">
+                            <label class="bet-label">建议金额</label>
+                            <div class="input-wrapper">
+                                <span class="prefix">$</span>
+                                <input type="number" id="amt-kelly" disabled>
+                            </div>
+                        </div>
+                        <div class="bet-group">
+                            <label class="bet-label">建议比例</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="pct-kelly" disabled>
+                                <span class="suffix">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="kelly-msg" style="font-size:0.8rem; color:#64748b; margin-top:5px; font-weight:bold;">计算中...</div>
+                </div>
+            </div>
+            <div class="result-tag" id="res-kelly"></div>
+        </div>
+
+        <!-- 女儿 -->
+        <div class="player-card card-daughter">
+            <div class="p-header">
+                <span class="p-name"><span style="color:var(--accent-pink)">👧</span> 女儿 (你)</span>
+                <span class="p-balance" id="bal-daughter">1,000</span>
+            </div>
+            <div class="bet-row">
+                <div class="bet-group">
+                    <label class="bet-label">输入金额</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="amt-daughter" placeholder="0">
+                    </div>
+                </div>
+                <div class="bet-group">
+                    <label class="bet-label">或 输入比例</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="pct-daughter" placeholder="0">
+                        <span class="suffix">%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="result-tag" id="res-daughter"></div>
+        </div>
+
+        <!-- 爸爸 -->
+        <div class="player-card card-father">
+            <div class="p-header">
+                <span class="p-name"><span style="color:var(--accent-green)">👨</span> 爸爸 (陪练)</span>
+                <span class="p-balance" id="bal-father">1,000</span>
+            </div>
+            <div class="bet-row">
+                <div class="bet-group">
+                    <label class="bet-label">输入金额</label>
+                    <div class="input-wrapper">
+                        <span class="prefix">$</span>
+                        <input type="number" id="amt-father" placeholder="0">
+                    </div>
+                </div>
+                <div class="bet-group">
+                    <label class="bet-label">或 输入比例</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="pct-father" placeholder="0">
+                        <span class="suffix">%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="result-tag" id="res-father"></div>
+        </div>
+    </div>
+
+    <!-- 动画与按钮 -->
+    <div class="dice-stage">
+        <div class="dice-wrapper">
+            <div class="cube" id="die1"></div> <div class="cube" id="die2"></div>
+        </div>
+        <button class="action-btn" id="rollBtn" onclick="startRound()">🎲 投掷</button>
+        <div style="font-size:1.5rem; font-weight:bold; color:#fff; height:30px;" id="roundResultText"></div>
+    </div>
+
+    <div class="chart-box"><canvas id="gameChart"></canvas></div>
+
+    <script>
+        const PROBS = { 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:5, 9:4, 10:3, 11:2, 12:1 };
+        const TOTAL_COMBINATIONS = 36;
+        const INITIAL_BALANCE = 1000;
+        let winningNumbers = [6, 7, 8];
+        let players = {};
+        let currentRound = 0;
+        const ROTATIONS = { 1:{x:0,y:0}, 6:{x:180,y:0}, 2:{x:0,y:90}, 5:{x:0,y:-90}, 3:{x:-90,y:0}, 4:{x:90,y:0} };
+
+        window.onload = function() {
+            renderNumberSelector();
+            createDiceFaces('die1'); createDiceFaces('die2');
+            initGameData();
+            setupInputSync('daughter');
+            setupInputSync('father');
+        };
+
+        function setupInputSync(playerKey) {
+            const amtInput = document.getElementById(`amt-${playerKey}`);
+            const pctInput = document.getElementById(`pct-${playerKey}`);
+            
+            amtInput.addEventListener('input', function() {
+                let bal = players[playerKey].balance;
+                let val = parseFloat(this.value);
+                if(isNaN(val)) { pctInput.value = ''; return; }
+                if(val > bal) { val = bal; this.value = bal; }
+                if(val < 0) { val = 0; this.value = 0; }
+                let pct = (bal > 0) ? (val / bal) * 100 : 0;
+                pctInput.value = pct.toFixed(1);
+            });
+
+            pctInput.addEventListener('input', function() {
+                let bal = players[playerKey].balance;
+                let val = parseFloat(this.value);
+                if(isNaN(val)) { amtInput.value = ''; return; }
+                if(val > 100) { val = 100; this.value = 100; }
+                if(val < 0) { val = 0; this.value = 0; }
+                let amt = Math.floor((val / 100) * bal);
+                amtInput.value = amt;
+            });
+        }
+
+        function clearInputs() {
+            ['daughter', 'father'].forEach(p => {
+                document.getElementById(`amt-${p}`).value = '';
+                document.getElementById(`pct-${p}`).value = '';
+            });
+        }
+        
+        // v2.4 核心修改：保持比例不变，重新计算金额
+        function refreshInputsFixedPct() {
+            ['daughter', 'father'].forEach(p => {
+                const amtInput = document.getElementById(`amt-${p}`);
+                const pctInput = document.getElementById(`pct-${p}`);
+                const bal = players[p].balance;
+                
+                // 1. 获取当前设定的比例
+                let currentPct = parseFloat(pctInput.value) || 0;
+
+                // 2. 如果余额为0，清空
+                if(bal <= 0) {
+                    amtInput.value = 0;
+                    pctInput.value = 0;
+                    return;
+                }
+
+                // 3. 根据固定比例计算新金额
+                let newAmt = Math.floor(bal * (currentPct / 100));
+                
+                // 4. 更新金额框 (比例框不动，保持用户设定的百分比)
+                amtInput.value = newAmt;
+            });
+        }
+
+        function initGameData() {
+            players = {
+                kelly: { balance: INITIAL_BALANCE, history: [INITIAL_BALANCE], color: '#3b82f6' },
+                daughter: { balance: INITIAL_BALANCE, history: [INITIAL_BALANCE], color: '#ec4899' },
+                father: { balance: INITIAL_BALANCE, history: [INITIAL_BALANCE], color: '#10b981' }
+            };
+            currentRound = 0;
+            document.getElementById('currentRoundDisplay').innerText = 0;
+            updateUIBalances(); updateGameState(); drawChart();
+            clearInputs();
+            document.getElementById('roundResultText').innerText = "";
+            ['kelly', 'daughter', 'father'].forEach(p => document.getElementById(`res-${p}`).innerText = "");
+        }
+
+        function resetGame() {
+            if(confirm("确定要重新开始吗？")) {
+                initGameData();
+                if(isKellyRevealed) toggleKelly();
+            }
+        }
+
+        let isKellyRevealed = false;
+        function toggleKelly() {
+            const area = document.getElementById('kelly-secret-area');
+            const icon = document.getElementById('eye-icon');
+            const text = document.getElementById('eye-text');
+            isKellyRevealed = !isKellyRevealed;
+            if(isKellyRevealed) {
+                area.classList.remove('blur-overlay'); area.classList.add('revealed');
+                icon.innerText = '🔒'; text.innerText = '隐藏答案';
+            } else {
+                area.classList.add('blur-overlay'); area.classList.remove('revealed');
+                icon.innerText = '👁️'; text.innerText = '查看答案';
+            }
+        }
+
+        function renderNumberSelector() {
+            const c = document.getElementById('numSelector'); c.innerHTML = '';
+            for(let i=2; i<=12; i++) {
+                const btn = document.createElement('div');
+                btn.className = `num-btn ${winningNumbers.includes(i) ? 'active' : ''}`;
+                btn.innerHTML = `<span>${i}</span><div class="dots">${"•".repeat(PROBS[i])}</div>`;
+                btn.onclick = () => toggleNumber(i);
+                c.appendChild(btn);
+            }
+        }
+
+        function toggleNumber(n) {
+            if(winningNumbers.includes(n)) winningNumbers = winningNumbers.filter(x => x!==n); else winningNumbers.push(n);
+            renderNumberSelector(); updateGameState();
+            if(isKellyRevealed) toggleKelly();
+        }
+
+        function updateGameState() {
+            let wins = 0; winningNumbers.forEach(n => wins += PROBS[n]);
+            let rate = wins/TOTAL_COMBINATIONS;
+            let badge = document.getElementById('winRateBadge');
+            badge.innerText = `胜率: ${(rate*100).toFixed(1)}%`;
+            badge.className = rate > 0.5 ? 'win-rate-badge' : 'win-rate-badge bad';
+
+            let kf = (2 * rate) - 1;
+            let kAmtInput = document.getElementById('amt-kelly');
+            let kPctInput = document.getElementById('pct-kelly');
+            let kMsg = document.getElementById('kelly-msg');
+
+            if(players.kelly.balance <= 0) {
+                kAmtInput.value = 0; kPctInput.value = 0; kMsg.innerText = "已破产";
+            } else if(kf <= 0) {
+                kAmtInput.value = 0; kPctInput.value = 0; 
+                kMsg.innerText = "建议: 不下注 (劣势)"; kMsg.style.color = "#ec4899";
+            } else {
+                let amt = Math.floor(players.kelly.balance * kf);
+                kAmtInput.value = amt; 
+                kPctInput.value = (kf*100).toFixed(1);
+                kMsg.innerText = "优势局，建议出击"; kMsg.style.color = "#10b981";
+            }
+        }
+
+        function startRound() {
+            if(players.daughter.balance <= 0 && players.father.balance <=0) { alert("游戏结束"); return; }
+            
+            const bets = {
+                kelly: parseInt(document.getElementById('amt-kelly').value) || 0,
+                daughter: parseInt(document.getElementById('amt-daughter').value) || 0,
+                father: parseInt(document.getElementById('amt-father').value) || 0
+            };
+
+            const btn = document.getElementById('rollBtn');
+            btn.disabled = true;
+            document.getElementById('roundResultText').innerText = "";
+            ['kelly', 'daughter', 'father'].forEach(p => document.getElementById(`res-${p}`).innerText = "");
+
+            const d1 = Math.floor(Math.random()*6)+1;
+            const d2 = Math.floor(Math.random()*6)+1;
+            const sum = d1+d2;
+            const win = winningNumbers.includes(sum);
+
+            animateDie('die1', d1); animateDie('die2', d2);
+
+            setTimeout(() => {
+                currentRound++;
+                document.getElementById('currentRoundDisplay').innerText = currentRound;
+                const txt = document.getElementById('roundResultText');
+                txt.innerText = `${d1}+${d2}=${sum} ${win?'✅ 赢':'❌ 输'}`;
+                txt.style.color = win ? 'var(--accent-green)' : 'var(--accent-pink)';
+
+                updateBalance('kelly', bets.kelly, win);
+                updateBalance('daughter', bets.daughter, win);
+                updateBalance('father', bets.father, win);
+
+                drawChart();
+                updateGameState(); 
+                
+                // 关键：按比例刷新
+                refreshInputsFixedPct(); 
+                
+                btn.disabled = false;
+            }, 1250);
+        }
+
+        function updateBalance(pk, bet, win) {
+            const p = players[pk];
+            const el = document.getElementById(`res-${pk}`);
+            if(bet<=0) { el.innerText="未下注"; el.style.color="#64748b"; }
+            else if(win) { p.balance+=bet; el.innerText=`+${bet}`; el.className="result-tag tag-win"; }
+            else { p.balance-=bet; el.innerText=`-${bet}`; el.className="result-tag tag-loss"; }
+            p.history.push(p.balance);
+            updateUIBalances();
+        }
+
+        function updateUIBalances() {
+            document.getElementById('bal-kelly').innerText = players.kelly.balance.toLocaleString();
+            document.getElementById('bal-daughter').innerText = players.daughter.balance.toLocaleString();
+            document.getElementById('bal-father').innerText = players.father.balance.toLocaleString();
+        }
+
+        const DOT_MAP = {1:[[0,0,0],[0,1,0],[0,0,0]],2:[[1,0,0],[0,0,0],[0,0,1]],3:[[1,0,0],[0,1,0],[0,0,1]],4:[[1,0,1],[0,0,0],[1,0,1]],5:[[1,0,1],[0,1,0],[1,0,1]],6:[[1,0,1],[1,0,1],[1,0,1]]};
+        function createDiceFaces(id){const die=document.getElementById(id);[{c:'front',v:1},{c:'back',v:6},{c:'right',v:5},{c:'left',v:2},{c:'top',v:3},{c:'bottom',v:4}].forEach(f=>{const d=document.createElement('div');d.className=`face ${f.c}`;d.setAttribute('data-val',f.v);DOT_MAP[f.v].flat().forEach(h=>{const w=document.createElement('div');if(h){const o=document.createElement('div');o.className='dot';w.appendChild(o)}d.appendChild(w)});die.appendChild(d)})}
+        function animateDie(id,v){const d=document.getElementById(id);const t=ROTATIONS[v];d.style.transition='none';d.style.transform='rotateX(0) rotateY(0)';setTimeout(()=>{d.style.transition='transform 1.2s cubic-bezier(0.15,0.9,0.34,1)';d.style.transform=`rotateX(${t.x+1080}deg) rotateY(${t.y+720}deg)`},50)}
+        
+        function drawChart(){
+            const cvs=document.getElementById('gameChart');const ctx=cvs.getContext('2d');
+            cvs.width=cvs.parentElement.offsetWidth;cvs.height=cvs.parentElement.offsetHeight;
+            const w=cvs.width,h=cvs.height; ctx.clearRect(0,0,w,h);
+            const all=[...players.kelly.history,...players.daughter.history,...players.father.history];
+            const max=Math.max(1200,...all), min=Math.min(0,...all);
+            const steps=players.kelly.history.length;
+            const pt=20,pb=40,pl=40,pr=30,gh=h-pt-pb,gw=w-pl-pr;
+            ctx.fillStyle='#64748b';ctx.textAlign='center';ctx.font='12px Arial';
+            let intv=steps>20?5:1;
+            for(let i=0;i<steps;i++){
+                if(i%intv!==0 && i!==steps-1) continue;
+                let x=pl+(i/(steps-1||1))*gw;
+                ctx.beginPath();ctx.moveTo(x,pt);ctx.lineTo(x,h-pb);ctx.strokeStyle='rgba(51,65,85,0.3)';ctx.stroke();
+                ctx.fillText(i,x,h-10);
+            }
+            let zy=pt+gh-((1000-min)/(max-min))*gh;
+            ctx.beginPath();ctx.strokeStyle='#475569';ctx.setLineDash([5,5]);ctx.moveTo(pl,zy);ctx.lineTo(w-pr,zy);ctx.stroke();ctx.setLineDash([]);
+            const draw=(his,col)=>{
+                ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=3;ctx.lineJoin='round';
+                his.forEach((v,i)=>{
+                    let x=pl+(i/(steps-1||1))*gw; let y=pt+gh-((v-min)/(max-min))*gh;
+                    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+                });
+                ctx.stroke();
+                if(his.length){let lv=his[his.length-1],lx=pl+gw,ly=pt+gh-((lv-min)/(max-min))*gh;ctx.fillStyle=col;ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fill();}
+            };
+            draw(players.kelly.history,players.kelly.color);
+            draw(players.daughter.history,players.daughter.color);
+            draw(players.father.history,players.father.color);
+        }
+    </script>
+</body>
+</html>
