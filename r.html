@@ -2,296 +2,876 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>24点终极解算器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>股市大富翁 - 知识问答版</title>
     <style>
         :root {
-            --bg-color: #2c3e50;
-            --card-bg: #34495e;
-            --primary: #e67e22;
-            --primary-hover: #d35400;
-            --success: #2ecc71;
-            --error: #e74c3c;
-            --text-main: #ecf0f1;
-            --text-sub: #95a5a6;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --p1-color: #3498db;
+            --p2-color: #e74c3c;
+            --board-bg: #ecf0f1;
+            --cell-bg: #fff;
+            --center-bg: #2c3e50;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: #34495e;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
         }
 
-        .container {
-            background-color: var(--card-bg);
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            width: 100%;
-            max-width: 500px;
-            text-align: center;
-            transition: transform 0.3s ease;
+        #game-container {
+            width: 98vw;
+            max-width: 1100px;
+            height: 96vh; 
+            max-height: 850px;
+            background-color: var(--board-bg);
+            border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            padding: 15px;
+            gap: 15px;
+            box-sizing: border-box;
+            position: relative;
         }
 
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-
-        p.subtitle {
-            color: var(--text-sub);
-            margin-bottom: 30px;
-            font-size: 0.9rem;
-        }
-
-        .input-group {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
-
-        .card-input {
-            width: 22%;
-            height: 70px;
-            font-size: 2rem;
-            font-weight: bold;
-            text-align: center;
-            border: none;
-            border-radius: 8px;
-            background-color: #ecf0f1;
-            color: var(--bg-color);
-            outline: none;
-            transition: all 0.2s;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .card-input:focus {
-            background-color: #fff;
-            box-shadow: 0 0 0 3px var(--primary);
-            transform: translateY(-2px);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 30px;
-        }
-
-        button {
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: white;
-        }
-
-        button:active {
-            transform: scale(0.98);
-        }
-
-        .btn-calc {
-            background-color: var(--primary);
-            flex: 2;
-        }
-        .btn-calc:hover { background-color: var(--primary-hover); }
-
-        .btn-rand {
-            background-color: #7f8c8d;
-            flex: 1;
-        }
-        .btn-rand:hover { background-color: #95a5a6; }
-
-        .btn-clear {
-            background-color: #c0392b;
-            flex: 1;
-        }
-        .btn-clear:hover { background-color: #e74c3c; }
-
-        .result-box {
-            min-height: 80px;
-            padding: 20px;
-            border-radius: 8px;
-            background-color: rgba(0,0,0,0.2);
+        /* --- 左侧面板 --- */
+        #control-panel {
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            gap: 10px;
+            height: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow: hidden;
         }
 
-        .result-text {
-            font-size: 1.5rem;
-            font-weight: bold;
-            line-height: 1.5;
-            word-break: break-all;
+        .game-status {
+            background: #2c3e50; color: #fff; padding: 10px; border-radius: 8px; font-size: 12px; margin-bottom: 5px;
+        }
+        .progress-bar-bg { width: 100%; height: 6px; background: #555; border-radius: 3px; margin-top: 5px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: #f1c40f; width: 0%; transition: width 0.5s; }
+
+        .player-card {
+            padding: 10px; border-radius: 10px; border: 2px solid #f0f0f0; background: #fafafa; transition: all 0.3s; flex-shrink: 0;
+        }
+        .player-card.active {
+            border-color: #f1c40f; background-color: #fffde7; transform: scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .money-display { font-size: 20px; color: #27ae60; font-family: 'Consolas', monospace; font-weight: bold; }
+        
+        #log-box {
+            flex-grow: 1; overflow-y: auto; font-size: 12px; border-top: 1px solid #eee; padding-top: 5px; color: #555; line-height: 1.5; min-height: 50px;
         }
 
-        .success { color: var(--success); }
-        .error { color: var(--error); }
-        .waiting { color: var(--text-sub); font-size: 1rem; font-weight: normal; }
-
-        .footer {
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: var(--text-sub);
+        #action-area {
+            margin-top: auto; height: 140px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; perspective: 600px; flex-shrink: 0; border-top: 1px solid #eee; padding-top: 10px;
         }
 
-        /* 移动端适配 */
-        @media (max-width: 480px) {
-            .container { padding: 20px; width: 90%; }
-            .card-input { height: 60px; font-size: 1.5rem; }
+        /* --- 3D骰子 (修正版) --- */
+        .cube-wrapper { width: 50px; height: 50px; position: absolute; top: 10px; transform-style: preserve-3d; }
+        .cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 1.2s cubic-bezier(0.1, 0.6, 0.3, 1); }
+        .cube-face { position: absolute; width: 50px; height: 50px; background: white; border: 2px solid #bdc3c7; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: bold; color: #2c3e50; backface-visibility: hidden; }
+        
+        /* 骰子面定义 (标准骰子布局) */
+        .face-1 { transform: rotateY(0deg) translateZ(25px); }
+        .face-2 { transform: rotateY(90deg) translateZ(25px); }
+        .face-3 { transform: rotateX(-90deg) translateZ(25px); } /* 上面 */
+        .face-4 { transform: rotateX(90deg) translateZ(25px); }  /* 下面 */
+        .face-5 { transform: rotateY(-90deg) translateZ(25px); }
+        .face-6 { transform: rotateY(180deg) translateZ(25px); }
+
+        .face-1::after { content: "●"; color: #e74c3c; font-size: 24px;} 
+        .face-2::after { content: "2"; } .face-3::after { content: "3"; } .face-4::after { content: "4"; } .face-5::after { content: "5"; } .face-6::after { content: "6"; }
+
+        .roll-btn {
+            background: linear-gradient(to bottom, #e67e22, #d35400); color: white; border: none; padding: 10px 0; width: 90%; font-size: 16px; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 #a04000; margin-top: 70px;
         }
+        .roll-btn:disabled { background: #95a5a6; cursor: not-allowed; box-shadow: none; transform: translateY(3px); }
+
+        /* --- 右侧棋盘 (6x6) --- */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            gap: 8px;
+            position: relative;
+            padding: 10px;
+            background: #dfe6e9;
+            border-radius: 12px;
+            border: 1px solid #bdc3c7;
+            height: 100%; box-sizing: border-box;
+        }
+
+        .cell {
+            background: var(--cell-bg); border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 12px; position: relative; text-align: center; font-weight: bold; box-shadow: 0 2px 0 #cbd5e0; padding: 2px; overflow: hidden; min-height: 0;
+        }
+        .cell-icon { font-size: 22px; margin-bottom: 2px; line-height: 1; }
+        .cell-name { font-size: 12px; color: #2c3e50; white-space: nowrap; }
+        .cell-info { font-size: 9px; color: #7f8c8d; transform: scale(0.9); white-space: nowrap; }
+        
+        /* 颜色定义 */
+        .t-start { background: #d4edda; border-bottom: 3px solid #28a745; }
+        .t-city  { border-bottom: 3px solid #3498db; }
+        .t-bad   { background: #fadbd8; border-bottom: 3px solid #c0392b; } 
+        .t-luck  { background: #fff3cd; border-bottom: 3px solid #f1c40f; }
+        .t-policy{ background: #d1c4e9; border-bottom: 3px solid #673ab7; } 
+        .t-school{ background: #e8daef; border-bottom: 3px solid #af7ac5; }
+        .t-risk  { background: #ebdef0; border-bottom: 3px solid #8e44ad; }
+        .t-trap  { background: #5d6d7e; color: #fff; border-bottom: 3px solid #34495e; } 
+        .t-trap .cell-name { color: #fff; } .t-trap .cell-info { color: #ccc; }
+        .t-quiz  { background: #aed6f1; border-bottom: 3px solid #2980b9; } /* 问答格 */
+
+        .token-container { width: 30px; height: 50px; position: absolute; z-index: 20; transition: top 0.3s linear, left 0.3s linear; pointer-events: none; display: flex; justify-content: center; align-items: flex-end; }
+        .character-sprite { font-size: 32px; line-height: 1; transform-origin: bottom center; transition: transform 0.2s; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.3)); }
+        @keyframes walk-anim { 0%, 100% { transform: translateY(0) scaleX(var(--face-dir, 1)); } 50% { transform: translateY(-8px) scaleX(var(--face-dir, 1)); } }
+        .walking .character-sprite { animation: walk-anim 0.25s infinite; }
+
+        /* --- 中心仪表盘 --- */
+        .center-area {
+            grid-column: 2 / 6; grid-row: 2 / 6; 
+            background: var(--center-bg); 
+            border-radius: 12px; 
+            display: grid;
+            grid-template-rows: 40px 1fr 60px;
+            color: #ecf0f1;
+            box-shadow: inset 0 0 20px #000;
+            overflow: hidden;
+            border: 2px solid #34495e;
+        }
+
+        .center-header {
+            background: #243442;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: bold; letter-spacing: 1px;
+            border-bottom: 1px solid #34495e;
+        }
+        
+        .center-content {
+            padding: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        }
+
+        .center-footer {
+            background: #243442; padding: 5px 15px; font-size: 11px; color: #bdc3c7;
+            display: flex; justify-content: space-between; align-items: center;
+            border-top: 1px solid #34495e;
+        }
+
+        .kelly-viz {
+            font-size: 24px; font-family: monospace; color: #f1c40f; margin: 10px 0;
+            background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 5px;
+        }
+        
+        .market-msg { font-size: 14px; color: #bdc3c7; margin-top: 5px; min-height: 20px;}
+        .big-icon { font-size: 40px; margin-bottom: 5px; }
+
+        /* --- 弹窗体系 --- */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .modal-box {
+            background: white; padding: 25px; border-radius: 15px; width: 420px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: popIn 0.3s ease;
+        }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* 开局设置 */
+        .start-option {
+            background: #f8f9fa; border: 2px solid #eee; padding: 15px; margin: 10px 0; border-radius: 10px; cursor: pointer; transition: 0.2s; text-align: left; display: flex; align-items: center; justify-content: space-between;
+        }
+        .start-option:hover, .start-option.selected { border-color: #3498db; background: #ebf5fb; }
+        .start-option.selected .custom-input { display: inline-block; border-color: #3498db; }
+        
+        .custom-input {
+            width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; margin-left: 10px;
+        }
+
+        /* 答题卡样式 */
+        .quiz-question { font-size: 16px; font-weight: bold; margin-bottom: 20px; text-align: left; line-height: 1.4; color: #2c3e50; }
+        .quiz-btn { display: block; width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; background: #f8f9fa; border-radius: 8px; cursor: pointer; text-align: left; font-size: 14px; transition: 0.2s; }
+        .quiz-btn:hover { background: #e8f6f3; border-color: #3498db; }
+        .quiz-result-good { color: #27ae60; font-weight: bold; margin-top: 15px; }
+        .quiz-result-bad { color: #e74c3c; font-weight: bold; margin-top: 15px; }
+
+        /* 结算弹窗 */
+        .winner-trophy { font-size: 60px; margin-bottom: 10px; display:block; animation: float 2s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .stat-result { display: flex; justify-content: space-between; margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 8px; font-weight: bold; }
+
+        /* 控件 */
+        .btn-main { background: #27ae60; color: white; width: 100%; padding: 12px; border:none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px;}
+        input[type="range"] { width: 100%; margin: 15px 0; }
+        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 15px; }
+        .btn-opt { padding: 6px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; color: white; background: #95a5a6; }
+        .trade-info { background: #f8f9fa; padding: 10px; border-radius: 8px; margin: 10px 0; text-align: left; }
+
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>24点 游戏助手</h1>
-    <p class="subtitle">输入4个数字 (1-13) 或 使用随机发牌</p>
+<div id="game-container">
+    <!-- 左侧 -->
+    <div id="control-panel">
+        <div class="game-status">
+            <div style="display:flex; justify-content:space-between;">
+                <span>🎯 目标: <span id="goal-text">50,000</span></span>
+                <span id="turn-text">Round: 1</span>
+            </div>
+            <div class="progress-bar-bg" title="P1进度">
+                <div id="p1-progress" class="progress-bar-fill" style="background:var(--p1-color)"></div>
+            </div>
+            <div class="progress-bar-bg" title="P2进度">
+                <div id="p2-progress" class="progress-bar-fill" style="background:var(--p2-color)"></div>
+            </div>
+        </div>
+        
+        <div id="p1-card" class="player-card active">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+                <span>👨‍💼 爸爸</span>
+                <span id="p1-money" class="money-display">10000</span>
+            </div>
+            <div id="p1-buff" style="font-size:10px; color:#8e44ad; height:12px;"></div>
+        </div>
 
-    <div class="input-group">
-        <input type="number" class="card-input" id="n1" placeholder="?" oninput="limitInput(this)">
-        <input type="number" class="card-input" id="n2" placeholder="?" oninput="limitInput(this)">
-        <input type="number" class="card-input" id="n3" placeholder="?" oninput="limitInput(this)">
-        <input type="number" class="card-input" id="n4" placeholder="?" oninput="limitInput(this)">
+        <div id="p2-card" class="player-card">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+                <span>👧 女儿</span>
+                <span id="p2-money" class="money-display">10000</span>
+            </div>
+            <div id="p2-buff" style="font-size:10px; color:#8e44ad; height:12px;"></div>
+        </div>
+
+        <div id="log-box"></div>
+
+        <div id="action-area">
+            <div class="cube-wrapper">
+                <div class="cube" id="dice-cube">
+                    <div class="cube-face face-1"></div>
+                    <div class="cube-face face-2"></div>
+                    <div class="cube-face face-3"></div>
+                    <div class="cube-face face-4"></div>
+                    <div class="cube-face face-5"></div>
+                    <div class="cube-face face-6"></div>
+                </div>
+            </div>
+            <button class="roll-btn" id="roll-btn" onclick="rollDice()">🎲 掷骰子</button>
+        </div>
     </div>
 
-    <div class="btn-group">
-        <button class="btn-calc" onclick="calculate()">计算结果</button>
-        <button class="btn-rand" onclick="randomize()">随机</button>
-        <button class="btn-clear" onclick="clearInputs()">清空</button>
+    <!-- 右侧 -->
+    <div id="board">
+        <!-- 中间大屏 -->
+        <div class="center-area">
+            <div class="center-header">
+                📊 市场大盘 (MARKET CENTER)
+            </div>
+            <div class="center-content">
+                <div id="center-icon" class="big-icon">📉</div>
+                <div id="center-title" style="font-size:18px; font-weight:bold; color:#ecf0f1">凯利公式</div>
+                <div class="kelly-viz">f* = 2p - 1</div>
+                <div id="center-desc" class="market-msg">等待开市...</div>
+            </div>
+            <div class="center-footer">
+                <span>🟢 胜率 > 50%: <b>投资</b></span>
+                <span>🔴 胜率 < 50%: <b>观望</b></span>
+            </div>
+        </div>
+        
+        <div id="p1-token" class="token-container"><div class="character-sprite">👨‍💼</div></div>
+        <div id="p2-token" class="token-container"><div class="character-sprite">👧</div></div>
     </div>
+</div>
 
-    <div class="result-box">
-        <div id="result" class="result-text waiting">等待输入...</div>
+<!-- 开局设置弹窗 -->
+<div id="modal-start" class="modal-overlay" style="display:flex;">
+    <div class="modal-box">
+        <h2>🎮 游戏规则设置</h2>
+        
+        <div class="start-option selected" onclick="selectMode(1, this)">
+            <div>
+                <h4 style="margin:0">🏆 竞速模式</h4>
+                <p style="margin:0; font-size:12px; color:#777">目标金额:</p>
+            </div>
+            <input type="number" id="input-target" class="custom-input" value="50000" step="10000" onclick="event.stopPropagation()">
+        </div>
+
+        <div class="start-option" onclick="selectMode(2, this)">
+            <div>
+                <h4 style="margin:0">⏱️ 限时模式</h4>
+                <p style="margin:0; font-size:12px; color:#777">回合数:</p>
+            </div>
+            <input type="number" id="input-rounds" class="custom-input" value="20" step="10" onclick="event.stopPropagation()">
+        </div>
+
+        <div class="start-option" onclick="selectMode(3, this)">
+            <div>
+                <h4 style="margin:0">🐢 生存模式</h4>
+                <p style="margin:0; font-size:12px; color:#777">玩到一方破产</p>
+            </div>
+        </div>
+
+        <button class="btn-main" onclick="startGame()">🚀 开始游戏</button>
     </div>
+</div>
 
-    <div class="footer">Designed by AI Assistant</div>
+<!-- 游戏结束弹窗 -->
+<div id="modal-end" class="modal-overlay">
+    <div class="modal-box" style="border-top: 5px solid #f1c40f;">
+        <span class="winner-trophy">🏆</span>
+        <h2 id="end-title" style="margin:5px 0; color:#e67e22;">游戏结束!</h2>
+        <p id="end-reason" style="color:#7f8c8d;">原因</p>
+        
+        <div style="margin-top:20px;">
+            <div class="stat-result" style="border-left:5px solid var(--p1-color)">
+                <span>👨‍💼 爸爸</span>
+                <span id="end-p1-money">0</span>
+            </div>
+            <div class="stat-result" style="border-left:5px solid var(--p2-color)">
+                <span>👧 女儿</span>
+                <span id="end-p2-money">0</span>
+            </div>
+        </div>
+
+        <h3 id="winner-name" style="color:#27ae60; margin-top:15px;"></h3>
+        <button class="btn-main" onclick="location.reload()">🔄 再玩一次</button>
+    </div>
+</div>
+
+<!-- 交易弹窗 -->
+<div id="modal-trade" class="modal-overlay">
+    <div class="modal-box">
+        <h3 id="trade-title" style="margin:0;">城市</h3>
+        <div class="trade-info">
+            <div style="display:flex; justify-content:space-between;">
+                <span>📈 胜率: <b id="trade-prob" style="color:#e67e22;">0%</b></span>
+                <span style="font-size:12px; color:#999">盈亏 ±100%</span>
+            </div>
+            <div style="width:100%; height:6px; background:#ddd; margin-top:5px; border-radius:3px;">
+                <div id="prob-bar" style="width:0%; height:100%; background:#e67e22; transition:width 0.5s;"></div>
+            </div>
+        </div>
+        
+        <div id="trade-input-ui">
+            <p style="margin:5px 0; font-size:14px;">投入: <b id="invest-val" style="color:#2c3e50; font-size:18px;">0 (0%)</b></p>
+            <input type="range" id="invest-range" value="0" min="0" oninput="updateRangeUI()">
+            
+            <div class="btn-grid">
+                <button class="btn-opt" style="background:#3498db" onclick="setInvest(0.1)">10%</button>
+                <button class="btn-opt" style="background:#3498db" onclick="setInvest(0.2)">20%</button>
+                <button class="btn-opt" style="background:#9b59b6" onclick="setInvest(0.5)">50%</button>
+                <button class="btn-opt" style="background:#e74c3c" onclick="setInvest(1.0)">All</button>
+            </div>
+            <button class="btn-main" onclick="confirmTrade()">💰 确认投资</button>
+        </div>
+        <div id="trade-result"></div>
+    </div>
+</div>
+
+<!-- 问答弹窗 -->
+<div id="modal-quiz" class="modal-overlay">
+    <div class="modal-box">
+        <div style="font-size:40px; margin-bottom:10px;">💡</div>
+        <h3 style="margin:0 0 10px 0;">股市知识问答</h3>
+        <div class="quiz-question" id="quiz-q">题目加载中...</div>
+        <div id="quiz-options"></div>
+        <div id="quiz-feedback"></div>
+        <button class="btn-main" id="quiz-close-btn" style="display:none; background:#7f8c8d" onclick="closeQuizModal()">继续</button>
+    </div>
+</div>
+
+<!-- 信息弹窗 -->
+<div id="modal-info" class="modal-overlay">
+    <div class="modal-box">
+        <div id="info-icon" style="font-size:40px; margin-bottom:10px;">🎁</div>
+        <h3 id="info-title">标题</h3>
+        <p id="info-desc" style="font-size:14px; color:#555; margin:15px 0;">内容</p>
+        <button class="btn-main" onclick="closeInfoModal()">确定</button>
+    </div>
 </div>
 
 <script>
-    // 限制输入长度和类型
-    function limitInput(el) {
-        if (el.value.length > 2) {
-            el.value = el.value.slice(0, 2);
+    // --- 配置与状态 ---
+    const pathMap = [
+        {r:1, c:1}, {r:1, c:2}, {r:1, c:3}, {r:1, c:4}, {r:1, c:5}, {r:1, c:6},
+        {r:2, c:6}, {r:3, c:6}, {r:4, c:6}, {r:5, c:6}, {r:6, c:6},
+        {r:6, c:5}, {r:6, c:4}, {r:6, c:3}, {r:6, c:2}, {r:6, c:1},
+        {r:5, c:1}, {r:4, c:1}, {r:3, c:1}, {r:2, c:1}
+    ];
+
+    // 地图数据
+    const mapData = [
+        { name: "起点", type: "t-start", icon: "🚩", info: "工资+2000" },
+        { name: "股市问答", type: "t-quiz", icon: "🎓", info: "答题赢钱" }, // 修改：问答
+        { name: "雄安", type: "t-city", icon: "🏗️", industry: "基建", minP:0.65, maxP:0.75 },
+        { name: "P2P暴雷", type: "t-trap", icon: "💣", industry: "诈骗", minP:0.10, maxP:0.30 },
+        { name: "医院", type: "t-bad", icon: "🏥", info: "医药费-1000" },
+        { name: "夕阳产业", type: "t-trap", icon: "🌇", industry: "制造", minP:0.30, maxP:0.45 },
+        { name: "上海", type: "t-city", icon: "🏙️", industry: "银行", minP:0.65, maxP:0.85 },
+        { name: "澳门", type: "t-luck", icon: "🎰", info: "博彩" },
+        { name: "杭州", type: "t-city", icon: "🛒", industry: "电商", minP:0.60, maxP:0.80 },
+        { name: "台湾", type: "t-city", icon: "🇹🇼", industry: "芯片", minP:0.60, maxP:0.88 },
+        { name: "熔断", type: "t-bad", icon: "📉", info: "资产冻结-5%" },
+        { name: "深圳", type: "t-city", icon: "💻", industry: "创新", minP:0.60, maxP:0.90 },
+        { name: "广州", type: "t-city", icon: "🍵", industry: "贸易", minP:0.60, maxP:0.80 },
+        { name: "宏观调控", type: "t-policy", icon: "🏛️", info: "全员事件" },
+        { name: "商学院", type: "t-school", icon: "🏫", info: "胜率UP" },
+        { name: "内幕消息", type: "t-fast", icon: "🤫", info: "花费买消息" }, // 修改：内幕消息
+        { name: "成都", type: "t-city", icon: "🐼", industry: "消费", minP:0.55, maxP:0.75 },
+        { name: "武汉", type: "t-city", icon: "🧬", industry: "医药", minP:0.55, maxP:0.75 },
+        { name: "税务局", type: "t-bad", icon: "👮", info: "征税10%" },
+        { name: "西安", type: "t-city", icon: "🚀", industry: "军工", minP:0.60, maxP:0.75 }
+    ];
+
+    // 题库
+    const quizBank = [
+        { q: "“不要把鸡蛋放在同一个篮子里”是指？", opts: ["分散投资", "集中投资", "买鸡蛋"], ans: 0, why: "分散投资可以降低风险。" },
+        { q: "股票市场中，“牛市”代表什么？", opts: ["市场下跌", "市场上涨", "多吃牛肉"], ans: 1, why: "牛头朝上攻击，象征上涨。" },
+        { q: "“低买高卖”是赚钱的基本逻辑吗？", opts: ["是", "不是", "不确定"], ans: 0, why: "低价买入高价卖出产生利润。" },
+        { q: "当一只股票胜率只有30%时，凯利公式建议？", opts: ["全仓买入", "买一点点", "不买"], ans: 2, why: "期望值为负，不应投资。" },
+        { q: "如果公司破产，股东的股票会怎样？", opts: ["可能变得一文不值", "政府赔钱", "公司退钱"], ans: 0, why: "股票代表所有权，公司破产则归零。" },
+        { q: "“割韭菜”通常形容什么行为？", opts: ["收割庄稼", "散户被庄家收割", "买菜做饭"], ans: 1, why: "形容新散户亏钱给老手。" },
+        { q: "巴菲特建议普通人投资什么？", opts: ["加密货币", "指数基金", "彩票"], ans: 1, why: "指数基金长期稳健。" }
+    ];
+
+    let players = [
+        { id:0, name:"爸爸", money:10000, pos:0, el:null, card:null, buff:0 },
+        { id:1, name:"女儿", money:10000, pos:0, el:null, card:null, buff:0 }
+    ];
+    let turn = 0;
+    let roundCount = 1;
+    let isAnimating = false;
+    let currentDiceRot = {x:0, y:0};
+    let currentTrade = null;
+
+    let gameMode = 1; 
+    let targetMoney = 50000;
+    let maxRounds = 20;
+
+    // --- 初始化 ---
+    function selectMode(mode, el) {
+        gameMode = mode;
+        document.querySelectorAll('.start-option').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function startGame() {
+        document.getElementById('modal-start').style.display = 'none';
+        
+        if(gameMode === 1) {
+            let val = parseInt(document.getElementById('input-target').value);
+            if(val && val > 0) targetMoney = val;
+        } else if(gameMode === 2) {
+            let val = parseInt(document.getElementById('input-rounds').value);
+            if(val && val > 0) maxRounds = val;
         }
-    }
 
-    // 生成随机数
-    function randomize() {
-        const inputs = document.querySelectorAll('.card-input');
-        inputs.forEach(input => {
-            input.value = Math.floor(Math.random() * 13) + 1;
-        });
-        calculate();
-    }
-
-    // 清空
-    function clearInputs() {
-        const inputs = document.querySelectorAll('.card-input');
-        inputs.forEach(input => input.value = '');
-        const resDiv = document.getElementById('result');
-        resDiv.className = 'result-text waiting';
-        resDiv.innerText = '等待输入...';
-    }
-
-    // 核心计算逻辑入口
-    function calculate() {
-        const inputs = document.querySelectorAll('.card-input');
-        let nums = [];
+        initBoard();
         
-        for (let input of inputs) {
-            if (!input.value) {
-                showResult("请输入全部4个数字", "error");
-                return;
-            }
-            nums.push(parseFloat(input.value));
-        }
-
-        // 转换数据结构供算法使用: [{val: 3, expr: "3"}, ...]
-        let arr = nums.map(n => ({ val: n, expr: n.toString() }));
+        let conditionText = "";
+        let goalText = "";
         
-        const solution = solve24(arr);
-        
-        if (solution) {
-            showResult(`解法: ${solution} = 24`, "success");
+        if (gameMode === 1) {
+            conditionText = `目标: ${targetMoney.toLocaleString()} 元`;
+            goalText = `🏆 ${targetMoney.toLocaleString()}`;
+        } else if (gameMode === 2) {
+            conditionText = `限时: ${maxRounds} 回合`;
+            goalText = `⏱️ ${maxRounds} R`;
         } else {
-            showResult("无解！这组数字无法凑成24。", "error");
+            conditionText = "生存: 直到破产";
+            goalText = "💀 生存";
         }
+        
+        document.getElementById('goal-text').innerText = goalText;
+        updateCenter("🚩", "游戏开始", conditionText);
+        updateStatus();
     }
 
-    function showResult(text, type) {
-        const resDiv = document.getElementById('result');
-        resDiv.className = `result-text ${type}`;
-        resDiv.innerText = text;
+    function initBoard() {
+        const board = document.getElementById('board');
+        const decor = board.querySelector('.center-area');
+        const p1Token = document.getElementById('p1-token');
+        const p2Token = document.getElementById('p2-token');
+        
+        players[0].el = p1Token; players[1].el = p2Token;
+        players[0].card = document.getElementById('p1-card');
+        players[1].card = document.getElementById('p2-card');
+
+        board.innerHTML = '';
+        board.appendChild(decor);
+        board.appendChild(p1Token);
+        board.appendChild(p2Token);
+
+        mapData.forEach((d, i) => {
+            let div = document.createElement('div');
+            div.className = `cell ${d.type}`;
+            div.style.gridRow = pathMap[i].r;
+            div.style.gridColumn = pathMap[i].c;
+            div.innerHTML = `<div class="cell-icon">${d.icon}</div><div class="cell-name">${d.name}</div><div class="cell-info">${d.industry || d.info}</div>`;
+            board.appendChild(div);
+        });
+
+        setTimeout(() => {
+            placePlayer(players[0], 0, false);
+            placePlayer(players[1], 0, false);
+        }, 100);
+        log("游戏开始！祝你好运。", "#ecf0f1");
     }
 
-    // 递归求解算法 (JavaScript版)
-    function solve24(arr) {
-        // 精度
-        const EPSILON = 1e-6;
+    // --- 骰子逻辑 (修正版) ---
+    // 对应CSS transform的角度映射
+    const faceRotations = [
+        { x: 0, y: 0 },    // 1
+        { x: 0, y: -90 },  // 2 (Right -> need to rotate Y -90 to bring it front)
+        { x: -90, y: 0 },  // 3 (Top -> need to rotate X -90)
+        { x: 90, y: 0 },   // 4 (Bottom -> need to rotate X 90)
+        { x: 0, y: 90 },   // 5 (Left -> need to rotate Y 90)
+        { x: 0, y: 180 }   // 6 (Back -> need to rotate Y 180)
+    ];
 
-        if (arr.length === 1) {
-            if (Math.abs(arr[0].val - 24) < EPSILON) {
-                return arr[0].expr;
+    function rollDice() {
+        if(isAnimating) return;
+        isAnimating = true;
+        document.getElementById('roll-btn').disabled = true;
+
+        const val = Math.floor(Math.random()*6)+1;
+        const target = faceRotations[val-1]; // 修正索引
+        
+        // 核心修正：累加旋转，确保停止时的角度与 target 模360同余
+        // x轴和y轴分别增加随机圈数 (3-5圈)
+        let loopsX = 3 + Math.floor(Math.random()*3);
+        let loopsY = 3 + Math.floor(Math.random()*3);
+
+        // 下一次角度 = 当前角度 + 整圈 + (目标 - 当前%360)
+        // 修正：这种算法确保动画结束时CSS transform值对应的面正对屏幕
+        // 注意：rotateX(90) 和 rotateY(90) 混合时会有轴向变动问题，
+        // 但这里我们只做单轴对齐的伪3D效果，或者我们直接重置transform。
+        // 为了简单且准确，我们采用累加法，但只在一个主轴上变动以匹配Target，
+        // 或者我们简单地接受CSS order：rotateX then rotateY.
+        // 上面的 faceRotations 是基于 X then Y 的。
+        
+        // 简单暴力法：
+        // 1. 获取当前总角度
+        // 2. 加上 720度 (2圈)
+        // 3. 调整余数以匹配 target
+        
+        let nextX = currentDiceRot.x + (360 * loopsX);
+        let remX = nextX % 360;
+        // 调整：我们需要 (nextX) % 360 == target.x
+        // nextX - remX + target.x
+        // 处理负数模运算:
+        let diffX = target.x - remX;
+        // 确保继续向前转
+        if(diffX < 0) diffX += 360; 
+        nextX += diffX;
+
+        let nextY = currentDiceRot.y + (360 * loopsY);
+        let remY = nextY % 360;
+        let diffY = target.y - remY;
+        if(diffY < 0) diffY += 360;
+        nextY += diffY;
+
+        currentDiceRot = {x: nextX, y: nextY};
+        
+        const cube = document.getElementById('dice-cube');
+        cube.style.transform = `rotateX(${nextX}deg) rotateY(${nextY}deg)`;
+
+        log(`${players[turn].name} 正在掷骰子...`);
+        updateCenter("🎲", "掷骰子", "祝你好运...");
+
+        setTimeout(() => {
+            log(`🎲 点数: <b>${val}</b>`);
+            moveStep(players[turn], val);
+        }, 1300);
+    }
+
+    function moveStep(p, steps) {
+        let left = steps;
+        p.el.classList.add('walking');
+        let timer = setInterval(() => {
+            let next = (p.pos + 1) % 20;
+            if(next === 0 && p.pos === 19) {
+                p.money += 2000;
+                log(`🔄 经过起点，工资+2000`, '#27ae60');
+                updateUI();
             }
-            return null;
-        }
-
-        for (let i = 0; i < arr.length; i++) {
-            for (let j = 0; j < arr.length; j++) {
-                if (i === j) continue;
-
-                let n1 = arr[i];
-                let n2 = arr[j];
-                
-                // 剩余的数组
-                let nextArr = arr.filter((_, idx) => idx !== i && idx !== j);
-
-                // 尝试四则运算
-                // 加
-                let res = solve24([...nextArr, { val: n1.val + n2.val, expr: `(${n1.expr} + ${n2.expr})` }]);
-                if (res) return res;
-
-                // 乘
-                res = solve24([...nextArr, { val: n1.val * n2.val, expr: `(${n1.expr} * ${n2.expr})` }]);
-                if (res) return res;
-
-                // 减 (n1 - n2)
-                res = solve24([...nextArr, { val: n1.val - n2.val, expr: `(${n1.expr} - ${n2.expr})` }]);
-                if (res) return res;
-
-                // 除 (n1 / n2)
-                if (Math.abs(n2.val) > EPSILON) {
-                    res = solve24([...nextArr, { val: n1.val / n2.val, expr: `(${n1.expr} / ${n2.expr})` }]);
-                    if (res) return res;
-                }
+            placePlayer(p, next, true);
+            left--;
+            if(left <= 0) {
+                clearInterval(timer);
+                p.el.classList.remove('walking');
+                setTimeout(() => handleEvent(p), 300);
             }
-        }
-        return null;
+        }, 250);
     }
 
-    // 支持回车键计算
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            calculate();
+    function placePlayer(p, idx, anim) {
+        p.pos = idx;
+        const cells = document.querySelectorAll('.cell');
+        const cell = cells[idx];
+        const cellRect = cell.getBoundingClientRect();
+        const boardRect = document.getElementById('board').getBoundingClientRect();
+        let cx = cellRect.left - boardRect.left + cellRect.width/2;
+        let cy = cellRect.top - boardRect.top + cellRect.height/2;
+
+        if(p.id===0) { cx -= 12; cy -= 5; } else { cx += 12; cy += 5; }
+        if(anim) {
+            let currC = pathMap[idx].c;
+            let prevPos = (idx - 1 + 20) % 20;
+            let prevC = pathMap[prevPos].c;
+            if (currC > prevC) p.el.style.setProperty('--face-dir', 1);
+            else if(currC < prevC) p.el.style.setProperty('--face-dir', -1);
         }
-    });
+        p.el.style.left = (cx - 15) + 'px';
+        p.el.style.top = (cy - 45) + 'px';
+    }
+
+    function handleEvent(p) {
+        const d = mapData[p.pos];
+        log(`${p.name} 到达 ${d.name}`);
+        updateCenter(d.icon, d.name, d.industry || d.info);
+
+        if(d.type === 't-city' || d.type === 't-risk' || d.type === 't-trap') {
+            openTradeModal(d, p);
+        } else if(d.name === "股市问答") {
+            openQuiz(p);
+        } else if(d.name === "澳门") {
+            if(Math.random()>0.5) { let w=1000; p.money+=w; showInfo("🎰 澳门风云", "手气不错！赢了 "+w, "💰"); } 
+            else { let l=500; p.money-=l; showInfo("🎰 澳门风云", "手气不佳，输了 "+l, "💸"); }
+            updateUI();
+        } else if(d.name === "宏观调控") {
+            let events = [
+                { t: "央行降息", d: "市场流动性增加，所有人资产增加 10%", f: (p)=> Math.floor(p.money*0.1) },
+                { t: "加印钞票", d: "全民发钱，每人获得 2000", f: (p)=> 2000 },
+                { t: "金融严监管", d: "去杠杆，所有人缴纳罚款 1500", f: (p)=> -1500 },
+                { t: "资本寒冬", d: "大盘跳水，所有人资产缩水 10%", f: (p)=> -Math.floor(p.money*0.1) }
+            ];
+            let ev = events[Math.floor(Math.random()*events.length)];
+            players[0].money += ev.f(players[0]);
+            players[1].money += ev.f(players[1]);
+            updateUI();
+            log(`🏛️ 宏观调控: ${ev.t}`, "#8e44ad");
+            showInfo("🏛️ " + ev.t, ev.d, "📢");
+        } else if(d.name === "内幕消息") {
+            // 简单处理：花500，前进3格
+            if(p.money > 500) {
+                p.money -= 500;
+                log("🤫 花费500买到内幕消息，额外前进3格", "#2980b9");
+                updateUI();
+                moveStep(p, 3);
+            } else {
+                showInfo("🤫 内幕消息", "钱不够，买不起消息...", "🚫");
+            }
+        } else if(d.name === "医院") {
+            let c=1000; p.money-=c; updateUI(); showInfo("🚑 医院", "看病花费 "+c, "💉");
+        } else if(d.name === "熔断") {
+            let c=Math.floor(p.money*0.05); p.money-=c; updateUI(); showInfo("📉 市场熔断", "资产缩水 "+c, "❄️");
+        } else if(d.name === "税务局") {
+            let t=Math.floor(p.money*0.1); p.money-=t; updateUI(); showInfo("👮 税务稽查", "纳税 "+t, "🧾");
+        } else if(d.name === "商学院") {
+            p.money-=500; p.buff=0.15; updateUI(); document.getElementById(p.id===0?'p1-buff':'p2-buff').innerText="Buff: 胜率+15%";
+            showInfo("🎓 EMBA进修", "下次胜率+15%", "📚");
+        } else {
+            nextTurn();
+        }
+    }
+
+    // --- 问答系统 ---
+    let currentQuizPlayer = null;
+    let currentQuestion = null;
+
+    function openQuiz(p) {
+        currentQuizPlayer = p;
+        const qIdx = Math.floor(Math.random() * quizBank.length);
+        currentQuestion = quizBank[qIdx];
+        
+        document.getElementById('quiz-q').innerText = currentQuestion.q;
+        const optsDiv = document.getElementById('quiz-options');
+        optsDiv.innerHTML = "";
+        
+        currentQuestion.opts.forEach((opt, idx) => {
+            let btn = document.createElement('button');
+            btn.className = "quiz-btn";
+            btn.innerText = ["A. ", "B. ", "C. "][idx] + opt;
+            btn.onclick = () => checkQuiz(idx);
+            optsDiv.appendChild(btn);
+        });
+
+        document.getElementById('quiz-feedback').innerHTML = "";
+        document.getElementById('quiz-close-btn').style.display = 'none';
+        document.getElementById('modal-quiz').style.display = 'flex';
+    }
+
+    function checkQuiz(ansIdx) {
+        // 禁用按钮
+        document.querySelectorAll('.quiz-btn').forEach(b => b.disabled = true);
+        const feedback = document.getElementById('quiz-feedback');
+        
+        if(ansIdx === currentQuestion.ans) {
+            let reward = 800;
+            currentQuizPlayer.money += reward;
+            feedback.innerHTML = `<div class="quiz-result-good">✅ 回答正确！<br>知识变现，获得 ${reward}</div><div style="font-size:12px;color:#555;margin-top:5px;">${currentQuestion.why}</div>`;
+            log("🎓 答题正确，获得奖金", "green");
+        } else {
+            let fine = 400;
+            currentQuizPlayer.money -= fine;
+            feedback.innerHTML = `<div class="quiz-result-bad">❌ 回答错误！<br>缴纳学费 ${fine}</div><div style="font-size:12px;color:#555;margin-top:5px;">正确答案是: ${currentQuestion.opts[currentQuestion.ans]}<br>${currentQuestion.why}</div>`;
+            log("🎓 答题错误，扣除罚款", "red");
+        }
+        updateUI();
+        document.getElementById('quiz-close-btn').style.display = 'block';
+    }
+
+    function closeQuizModal() {
+        document.getElementById('modal-quiz').style.display = 'none';
+        nextTurn();
+    }
+
+
+    // --- 交易系统 ---
+    function openTradeModal(data, p) {
+        currentTrade = { p: p, baseP: (Math.random()*(data.maxP-data.minP)+data.minP) };
+        let finalP = currentTrade.baseP + p.buff;
+        if(finalP > 0.95) finalP = 0.95;
+        currentTrade.finalP = finalP;
+
+        const modal = document.getElementById('modal-trade');
+        document.getElementById('trade-title').innerText = `${data.name} · ${data.industry}`;
+        let pct = Math.round(finalP*100);
+        document.getElementById('trade-prob').innerText = `${pct}%`;
+        document.getElementById('prob-bar').style.width = `${pct}%`;
+        
+        if(finalP < 0.5) {
+            document.getElementById('trade-prob').style.color = '#e74c3c';
+        } else {
+            document.getElementById('trade-prob').style.color = '#e67e22';
+        }
+
+        const range = document.getElementById('invest-range');
+        range.max = Math.floor(p.money); range.value = 0;
+        updateRangeUI();
+        document.getElementById('trade-input-ui').style.display = 'block';
+        document.getElementById('trade-result').innerHTML = '';
+        modal.style.display = 'flex';
+    }
+
+    function updateRangeUI() { 
+        let val = document.getElementById('invest-range').value;
+        let max = document.getElementById('invest-range').max;
+        let pct = 0;
+        if(max > 0) pct = Math.round((val / max) * 100);
+        document.getElementById('invest-val').innerText = `${val} (${pct}%)`;
+    }
+    
+    function setInvest(r) { 
+        document.getElementById('invest-range').value = Math.floor(currentTrade.p.money * r); 
+        updateRangeUI(); 
+    }
+
+    function confirmTrade() {
+        const bet = parseInt(document.getElementById('invest-range').value);
+        const p = currentTrade.p;
+        if(p.buff > 0) { p.buff = 0; document.getElementById(p.id===0?'p1-buff':'p2-buff').innerText = ""; }
+        document.getElementById('trade-input-ui').style.display = 'none';
+
+        const win = Math.random() <= currentTrade.finalP;
+        let html = '';
+        if(win) {
+            p.money += bet;
+            html = `<div class="trade-info" style="border-left:5px solid #2ecc71;"><b>📈 投资成功</b><br>盈利 +${bet}</div>`;
+            log(`盈利 ${bet}`, 'green');
+        } else {
+            p.money -= bet;
+            html = `<div class="trade-info" style="border-left:5px solid #e74c3c;"><b>📉 投资失败</b><br>亏损 -${bet}</div>`;
+            log(`亏损 ${bet}`, 'red');
+        }
+        
+        let k = (2 * currentTrade.finalP) - 1;
+        let adviceText = k <= 0 ? "不应该投资！" : `建议仓位: <b>${Math.round(k*100)}%</b>`;
+        
+        html += `<div style="font-size:12px;color:#555;margin-top:5px;">凯利公式: ${adviceText}</div>`;
+        html += `<button class="btn-main" onclick="closeTrade()" style="padding:8px; margin-top:10px;">完成</button>`;
+        document.getElementById('trade-result').innerHTML = html;
+        updateUI();
+    }
+
+    function closeTrade() { document.getElementById('modal-trade').style.display = 'none'; nextTurn(); }
+    function showInfo(t, d, i) { document.getElementById('info-title').innerText=t; document.getElementById('info-desc').innerText=d; document.getElementById('info-icon').innerText=i; document.getElementById('modal-info').style.display='flex'; }
+    function closeInfoModal() { document.getElementById('modal-info').style.display='none'; nextTurn(); }
+
+    function updateUI() {
+        document.getElementById('p1-money').innerText = Math.floor(players[0].money);
+        document.getElementById('p2-money').innerText = Math.floor(players[1].money);
+        updateStatus();
+    }
+    
+    function updateCenter(icon, title, desc) {
+        document.getElementById('center-icon').innerText = icon;
+        document.getElementById('center-title').innerText = title;
+        document.getElementById('center-desc').innerText = desc;
+    }
+
+    function updateStatus() {
+        if(gameMode === 1) {
+            let p1Pct = Math.min(100, (players[0].money / targetMoney) * 100);
+            let p2Pct = Math.min(100, (players[1].money / targetMoney) * 100);
+            document.getElementById('p1-progress').style.width = p1Pct + "%";
+            document.getElementById('p2-progress').style.width = p2Pct + "%";
+            document.getElementById('turn-text').innerText = "Round: " + roundCount;
+        } else if(gameMode === 2) {
+            let turnPct = Math.min(100, (roundCount / maxRounds) * 100);
+            document.getElementById('p1-progress').style.width = turnPct + "%";
+            document.getElementById('p2-progress').style.width = turnPct + "%";
+            document.getElementById('turn-text').innerText = `Round: ${roundCount} / ${maxRounds}`;
+        }
+    }
+
+    function log(msg, color='#555') {
+        let div = document.createElement('div');
+        div.innerHTML = msg; div.style.color = color;
+        document.getElementById('log-box').prepend(div);
+    }
+
+    function nextTurn() {
+        if (checkGameOver()) return;
+        players[turn].card.classList.remove('active');
+        turn = (turn+1)%2;
+        if(turn === 0) roundCount++;
+        if (gameMode === 2 && roundCount > maxRounds) { triggerGameOver("回合结束"); return; }
+        players[turn].card.classList.add('active');
+        isAnimating = false;
+        document.getElementById('roll-btn').disabled = false;
+        log(`👉 轮到 ${players[turn].name}`, "#2980b9");
+        updateStatus();
+    }
+
+    function checkGameOver() {
+        if (players[turn].money <= 0) { triggerGameOver("资产耗尽破产"); return true; }
+        if (gameMode === 1 && players[turn].money >= targetMoney) { triggerGameOver("达成财富目标"); return true; }
+        return false;
+    }
+
+    function triggerGameOver(reason) {
+        document.getElementById('modal-end').style.display = 'flex';
+        document.getElementById('end-reason').innerText = `结束原因: ${reason}`;
+        document.getElementById('end-p1-money').innerText = Math.floor(players[0].money);
+        document.getElementById('end-p2-money').innerText = Math.floor(players[1].money);
+        let winnerName = "";
+        if (players[0].money > players[1].money) winnerName = "👨‍💼 爸爸 获胜!";
+        else if (players[1].money > players[0].money) winnerName = "👧 女儿 获胜!";
+        else winnerName = "🤝 平局!";
+        document.getElementById('winner-name').innerText = "🎉 " + winnerName;
+    }
+
+    window.onload = function() { };
 </script>
-
 </body>
 </html>
