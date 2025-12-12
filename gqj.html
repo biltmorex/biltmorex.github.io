@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>宫崎骏大冒险 - 音效完美版</title>
+    <title>宫崎骏大冒险 - 1000金币挑战版</title>
     <style>
         :root {
             --p1-color: #795548; /* 龙猫 */
@@ -39,6 +39,7 @@
             grid-template-columns: 260px 1fr;
             padding: 15px;
             gap: 15px;
+            box-sizing: border-box;
             border: 6px solid #fff;
         }
 
@@ -51,6 +52,7 @@
             flex-direction: column;
             gap: 10px;
             height: 100%;
+            box-sizing: border-box;
             border: 2px solid #a5d6a7;
             overflow: hidden;
         }
@@ -177,6 +179,7 @@
         
         .start-option { background: #f1f8e9; border: 2px solid #fff; padding: 12px; margin: 8px 0; border-radius: 10px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; }
         .start-option.selected { border-color: #7cb342; background: #dcedc8; }
+        /* 默认值改为 1000 */
         .custom-input { width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; text-align: center; color: #33691e; pointer-events: auto; }
 
         .math-eq { font-size: 32px; font-weight: bold; color: #2e7d32; margin: 15px 0; font-family: 'Verdana'; }
@@ -205,7 +208,7 @@
 <div id="game-container">
     <div id="control-panel">
         <div class="game-status">
-            <div style="display:flex; justify-content:space-between;"><span>🎯 目标: <span id="goal-text">500</span></span><span id="turn-text">R: 1</span></div>
+            <div style="display:flex; justify-content:space-between;"><span>🎯 目标: <span id="goal-text">1000</span></span><span id="turn-text">R: 1</span></div>
             <div class="progress-bar-bg" title="P1"><div id="p1-progress" class="progress-bar-fill" style="background:#795548"></div></div>
             <div class="progress-bar-bg" title="P2"><div id="p2-progress" class="progress-bar-fill" style="background:#e91e63"></div></div>
         </div>
@@ -241,7 +244,7 @@
         <h2 style="color:#2e7d32; margin-top:0;">🍃 宫崎骏奇幻之旅</h2>
         <div class="start-option selected" id="opt-1" onclick="game.selectMode(1)">
             <div><b style="color:#e65100">🏆 竞速</b><br><span style="font-size:11px;color:#666">目标金币</span></div>
-            <input type="number" id="input-target" class="custom-input" value="500" step="100" onclick="event.stopPropagation()">
+            <input type="number" id="input-target" class="custom-input" value="1000" step="100" onclick="event.stopPropagation()">
         </div>
         <div class="start-option" id="opt-2" onclick="game.selectMode(2)">
             <div><b style="color:#0d47a1">⏱️ 限时</b><br><span style="font-size:11px;color:#666">限定回合</span></div>
@@ -353,7 +356,7 @@ const SoundFX = {
         // 播放无声短音以激活 iOS 音频
         this.playTone(440, 'sine', 0.01, 0.001);
     },
-    playTone: function(freq, type, dur, vol=0.1) {
+    playTone: function(freq, type, duration, vol=0.1) {
         if (!this.ctx) return;
         try {
             const osc = this.ctx.createOscillator();
@@ -361,11 +364,11 @@ const SoundFX = {
             osc.type = type;
             osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
             gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
             osc.connect(gain);
             gain.connect(this.ctx.destination);
             osc.start();
-            osc.stop(this.ctx.currentTime + dur);
+            osc.stop(this.ctx.currentTime + duration);
         } catch(e) {}
     },
     playRoll: function() { 
@@ -374,13 +377,14 @@ const SoundFX = {
         }
     },
     playStep: function() { this.playTone(300, 'sine', 0.1, 0.1); },
-    playWarp: function() { 
-        this.playTone(200, 'triangle', 0.3, 0.1); 
-        setTimeout(() => this.playTone(400, 'triangle', 0.3, 0.1), 300);
-    },
     playWin: function() { 
         this.playTone(500, 'triangle', 0.2, 0.1); 
         setTimeout(() => this.playTone(800, 'triangle', 0.4, 0.1), 200); 
+    },
+    playWarp: function() { 
+        this.playTone(200, 'sine', 0.1, 0.1);
+        setTimeout(() => this.playTone(400, 'sine', 0.2, 0.1), 100);
+        setTimeout(() => this.playTone(600, 'sine', 0.3, 0.1), 200);
     }
 };
 
@@ -392,7 +396,7 @@ const game = {
     round: 1,
     isAnimating: false,
     mode: 1, // 1:Target, 2:Rounds, 3:Survival
-    target: 500,
+    target: 1000, // 默认 1000
     maxRounds: 20,
     diceRot: {x:0, y:0},
     currentTrade: null,
@@ -417,7 +421,7 @@ const game = {
     mapData: [
         { name: "油屋", type: "t-start", icon: "♨️", info: "薪水+20" },
         { name: "琪琪面包", type: "t-city", icon: "🍞", industry: "烘焙", minP:0.65, maxP:0.80 },
-        { name: "龙猫巴士", type: "t-fun", icon: "🚌", info: "劫富济贫" },
+        { name: "龙猫巴士", type: "t-fun", icon: "🚌", info: "随机穿梭" },
         { name: "蜻蜓单车", type: "t-city", icon: "🚲", industry: "运输", minP:0.60, maxP:0.75 },
         { name: "卡西法", type: "t-luck", icon: "🔥", info: "炉火旺盛" },
         { name: "无脸男", type: "t-trap", icon: "👺", industry: "假金子", minP:0.10, maxP:0.35 }, 
@@ -471,11 +475,10 @@ const game = {
     },
 
     start: function() {
-        SoundFX.init(); // 尝试初始化音效
+        SoundFX.init();
         document.getElementById('modal-start').style.display = 'none';
         
-        // 读取配置
-        if(this.mode===1) this.target = parseInt(document.getElementById('input-target').value) || 500;
+        if(this.mode===1) this.target = parseInt(document.getElementById('input-target').value) || 1000;
         if(this.mode===2) this.maxRounds = parseInt(document.getElementById('input-rounds').value) || 20;
 
         let goalStr = this.mode===1 ? `🏆 ${this.target}` : (this.mode===2 ? `⏱️ ${this.maxRounds}R` : "💀 生存");
@@ -490,13 +493,11 @@ const game = {
         const board = document.getElementById('board');
         board.innerHTML = '';
         
-        // 中间仪表盘
         const center = document.createElement('div');
         center.className = 'center-area';
         center.innerHTML = `<div id="center-icon" class="center-icon">🏰</div><div id="center-title" style="font-weight:bold;color:#2e7d32;font-size:16px;">吉卜力世界</div><div id="center-desc" style="font-size:12px;color:#558b2f;">请开始游戏</div>`;
         board.appendChild(center);
 
-        // 格子
         this.mapData.forEach((d, i) => {
             let div = document.createElement('div');
             div.className = `cell ${d.type}`;
@@ -507,7 +508,6 @@ const game = {
             board.appendChild(div);
         });
 
-        // 棋子
         this.players.forEach(p => {
             let el = document.createElement('div');
             el.className = 'token-container';
@@ -516,7 +516,6 @@ const game = {
             p.el = el;
         });
 
-        // 初始位置
         setTimeout(() => {
             this.placePlayer(this.players[0], 0);
             this.placePlayer(this.players[1], 0);
@@ -546,17 +545,14 @@ const game = {
         p.el.style.top = (cy - 40) + 'px';
     },
 
-    // --- 游戏流程 ---
     rollDice: function() {
         if(this.isAnimating) return;
         this.isAnimating = true;
         document.getElementById('roll-btn').disabled = true;
         
-        // 骰子动画
         const val = Math.floor(Math.random()*6)+1;
         const faces = [{x:0,y:0}, {x:0,y:-90}, {x:-90,y:0}, {x:90,y:0}, {x:0,y:90}, {x:0,y:180}];
         
-        // 旋转
         let nextX = this.diceRot.x + 360*2 + faces[val-1].x - (this.diceRot.x%360);
         let nextY = this.diceRot.y + 360*2 + faces[val-1].y - (this.diceRot.y%360);
         this.diceRot = {x:nextX, y:nextY};
@@ -578,7 +574,6 @@ const game = {
             let next = (p.pos + 1) % this.mapData.length;
             SoundFX.playStep();
             
-            // 经过起点
             if(next === 0 && p.pos === this.mapData.length - 1) {
                 p.money += 20;
                 this.log(`♨️ 经过油屋，获得薪水+20`, '#e65100');
@@ -627,7 +622,6 @@ const game = {
         }
     },
 
-    // --- 猫巴士逻辑 ---
     showCatbusChoice: function(p) {
         let choices = [];
         while(choices.length < 3) {
@@ -653,7 +647,6 @@ const game = {
         document.getElementById('modal-catbus').style.display = 'flex';
     },
 
-    // --- 智能算术逻辑 ---
     triggerMath: function(player, amount, callback) {
         if(amount === 0) { callback(); return; } 
         let changeVal = Math.round(amount);
@@ -692,7 +685,6 @@ const game = {
         }
     },
 
-    // --- 交易 ---
     openTradeModal: function(data, p) {
         this.currentTrade = { p: p, baseP: (Math.random()*(data.maxP-data.minP)+data.minP) };
         let finalP = this.currentTrade.baseP + (p.buff||0); if(finalP>0.95) finalP=0.95;
@@ -815,7 +807,6 @@ const game = {
 };
 
 window.onload = function() {
-    // 确保DOM就绪
     game.log("准备就绪...", "#999");
 };
 </script>
