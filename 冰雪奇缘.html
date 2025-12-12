@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>冰雪奇缘大冒险 - 魔法算术版</title>
+    <style>
+        :root {
+            --p1-color: #f57c00; /* 雪宝胡萝卜色 */
+            --p2-color: #29b6f6; /* 艾莎冰蓝色 */
+            --font-main: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            --primary-btn: linear-gradient(to bottom, #4fc3f7, #0288d1);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: var(--font-main);
+            /* 冰雪极光渐变 */
+            background: linear-gradient(135deg, #e1f5fe 0%, #d1c4e9 50%, #b3e5fc 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 98vw;
+            max-width: 1150px;
+            height: 98vh; 
+            max-height: 850px;
+            background-color: rgba(255, 255, 255, 0.90);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(33, 150, 243, 0.2);
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            padding: 15px;
+            gap: 15px;
+            border: 6px solid #fff;
+            backdrop-filter: blur(10px);
+        }
+
+        /* --- 左侧控制区 --- */
+        #control-panel {
+            background: #fff;
+            padding: 10px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+            border: 2px solid #81d4fa;
+            overflow: hidden;
+        }
+
+        .game-status {
+            background: #0288d1; color: #fff; padding: 10px; border-radius: 10px; font-size: 13px; flex-shrink: 0;
+        }
+        .progress-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.3); border-radius: 3px; margin-top: 5px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: #ffd700; width: 0%; transition: width 0.5s; }
+
+        .player-card {
+            padding: 8px; border-radius: 10px; border: 2px solid #e1f5fe; background: #fff; transition: all 0.3s; flex-shrink: 0; position: relative;
+        }
+        .player-card.active {
+            border-color: #29b6f6; background-color: #e3f2fd; transform: scale(1.02); box-shadow: 0 3px 8px rgba(3, 169, 244, 0.2);
+        }
+        .money-display { font-size: 22px; color: #01579b; font-weight: bold; font-family: monospace; display: block; margin-top: 2px; }
+
+        /* 开关样式 */
+        .math-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; font-size: 11px; color: #666; background: #e1f5fe; padding: 4px 8px; border-radius: 15px; }
+        .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 18px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #29b6f6; }
+        input:checked + .slider:before { transform: translateX(16px); }
+
+        #log-box {
+            flex-grow: 1; overflow-y: auto; font-size: 12px; border-top: 1px dashed #b3e5fc; padding: 5px 0; color: #555; line-height: 1.4;
+        }
+
+        #action-area {
+            height: 140px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; flex-shrink: 0; perspective: 600px;
+        }
+
+        /* 3D骰子 (冰块风) */
+        .cube-wrapper { width: 50px; height: 50px; position: absolute; top: 15px; transform-style: preserve-3d; }
+        .cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 1.2s ease-out; }
+        .cube-face { position: absolute; width: 50px; height: 50px; background: #e0f7fa; border: 2px solid #0288d1; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; color: #0277bd; box-shadow: inset 0 0 10px rgba(255,255,255,0.8); }
+        .face-1 { transform: rotateY(0deg) translateZ(25px); } .face-2 { transform: rotateY(90deg) translateZ(25px); }
+        .face-3 { transform: rotateX(-90deg) translateZ(25px); } .face-4 { transform: rotateX(90deg) translateZ(25px); }
+        .face-5 { transform: rotateY(-90deg) translateZ(25px); } .face-6 { transform: rotateY(180deg) translateZ(25px); }
+        .face-1::after { content: "❄️"; } .face-2::after { content: "2"; } .face-3::after { content: "3"; } 
+        .face-4::after { content: "4"; } .face-5::after { content: "5"; } .face-6::after { content: "6"; }
+
+        .roll-btn {
+            background: var(--primary-btn); color: white; border: none; padding: 12px 0; width: 100%; font-size: 18px; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 #0277bd; margin-top: 70px; transition: transform 0.1s; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+        .roll-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0277bd; }
+        .roll-btn:disabled { background: #cfd8dc; cursor: not-allowed; box-shadow: none; transform: translateY(3px); }
+
+        /* --- 右侧棋盘 (6x6 网格, 32格路径, 中间空4格) --- */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            gap: 12px;
+            position: relative;
+            padding: 20px;
+            background: #e1f5fe;
+            border-radius: 20px;
+            border: 4px solid #81d4fa;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .cell {
+            background: #fff; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; position: relative; text-align: center; font-weight: bold; box-shadow: 0 4px 0 #b3e5fc; padding: 2px; overflow: hidden; border: 1px solid #b3e5fc; z-index: 1; transition: transform 0.2s;
+        }
+        
+        .cell::after {
+            content: attr(data-arrow); position: absolute; right: 4px; bottom: 2px; font-size: 12px; color: rgba(0,0,0,0.15); font-weight: bold;
+        }
+
+        .cell-icon { font-size: 28px; margin-bottom: 2px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
+        .cell-name { font-size: 11px; color: #01579b; width: 95%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cell-info { font-size: 10px; color: #0288d1; transform: scale(0.9); }
+
+        /* 格子类型 */
+        .t-start { background: #dcedc8; border-bottom: 4px solid #8bc34a; } 
+        .t-city  { border-bottom: 4px solid #4fc3f7; } 
+        .t-bad   { background: #ffccbc; border-bottom: 4px solid #ff7043; } 
+        .t-luck  { background: #fff9c4; border-bottom: 4px solid #fdd835; } 
+        .t-trap  { background: #546e7a; color: #fff; border-bottom: 4px solid #263238; } 
+        .t-trap .cell-name { color: #fff; } .t-trap .cell-info { color: #cfd8dc; }
+        .t-fun   { background: #ffe0b2; border-bottom: 4px solid #ffa726; } 
+        .t-quiz  { background: #e1bee7; border-bottom: 4px solid #ab47bc; } 
+        .t-school{ background: #b2dfdb; border-bottom: 4px solid #26a69a; }
+        .t-super { background: #ce93d8; border-bottom: 4px solid #8e24aa; } 
+
+        /* 中间留白区域 (2x2格) */
+        .center-area {
+            grid-column: 3 / 5;
+            grid-row: 3 / 5;
+            background: linear-gradient(135deg, #ffffff 0%, #e1f5fe 100%);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: #0277bd;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05), 0 0 0 8px #b3e5fc;
+            z-index: 0;
+            padding: 10px;
+        }
+        .center-icon { font-size: 40px; margin-bottom: 5px; animation: float 3s infinite ease-in-out; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+        /* 棋子 */
+        .token-container {
+            width: 40px; height: 50px; position: absolute; z-index: 20; transition: top 0.3s ease, left 0.3s ease; pointer-events: none; display: flex; justify-content: center; align-items: flex-end;
+        }
+        .character-sprite { font-size: 42px; line-height: 1; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.3)); transform-origin: bottom center; transition: transform 0.2s; }
+        .walking .character-sprite { animation: bounce 0.3s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+        /* --- 弹窗 --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-box { background: #fff; padding: 25px; border-radius: 20px; width: 380px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: popIn 0.3s ease; }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .btn-main { background: var(--primary-btn); color: white; width: 100%; padding: 12px; border:none; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+        
+        .start-option { background: #e0f7fa; border: 2px solid #fff; padding: 12px; margin: 8px 0; border-radius: 10px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+        .start-option.selected { border-color: #29b6f6; background: #e1f5fe; }
+        .custom-input { width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; text-align: center; color: #0277bd; pointer-events: auto; }
+
+        .math-eq { font-size: 32px; font-weight: bold; color: #01579b; margin: 15px 0; font-family: 'Verdana'; }
+        .math-input { font-size: 24px; padding: 8px; width: 120px; text-align: center; border: 3px solid #29b6f6; border-radius: 8px; outline: none; }
+        
+        .quiz-btn { display: block; width: 100%; padding: 10px; margin: 8px 0; background: #f5f5f5; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; text-align: left; font-size: 14px; }
+        .quiz-btn:hover { background: #e1f5fe; border-color: #29b6f6; }
+
+        .trade-info { background: #e0f2f1; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: left; border: 1px solid #b2dfdb; }
+        input[type="range"] { width: 100%; margin: 15px 0; accent-color: #039be5; cursor: pointer; }
+        .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .btn-opt { padding: 8px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; background: #cfd8dc; }
+        .btn-opt:hover { background: #b0bec5; }
+        
+        .catbus-btn { background: #e1f5fe; border: 2px solid #29b6f6; padding: 10px; margin: 8px 0; border-radius: 10px; cursor: pointer; text-align: left; display: flex; align-items: center; width: 100%; transition: 0.2s; }
+        .catbus-btn:hover { transform: scale(1.02); background: #b3e5fc; }
+        .catbus-icon { font-size: 24px; margin-right: 10px; }
+
+        .shake { animation: shake 0.4s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } 100% { transform: translateX(0); } }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="control-panel">
+        <div class="game-status">
+            <div style="display:flex; justify-content:space-between;"><span>🎯 目标: <span id="goal-text">1000</span></span><span id="turn-text">R: 1</span></div>
+            <div class="progress-bar-bg" title="P1"><div id="p1-progress" class="progress-bar-fill" style="background:#e65100"></div></div>
+            <div class="progress-bar-bg" title="P2"><div id="p2-progress" class="progress-bar-fill" style="background:#1e88e5"></div></div>
+        </div>
+        
+        <div style="background:#e1f5fe; border:1px solid #81d4fa; border-radius:8px; padding:8px; text-align:center; font-size:12px; color:#0277bd; flex-shrink:0;"><b>💰 凯利公式</b><br>胜率高就投，胜率低就撤</div>
+        
+        <div id="p1-card" class="player-card active">
+            <div style="display:flex; justify-content:space-between; align-items:center"><span>⛄ 雪宝</span><span id="p1-money" class="money-display">100</span></div>
+            <div style="font-size:10px; color:#aaa; margin-top:2px;">(自动结算)</div>
+        </div>
+        
+        <div id="p2-card" class="player-card">
+            <div style="display:flex; justify-content:space-between; align-items:center"><span>👸 艾莎</span><span id="p2-money" class="money-display">100</span></div>
+            <div class="math-toggle-row">
+                <span>口算魔法</span>
+                <label class="switch"><input type="checkbox" id="math-toggle" checked onchange="game.toggleP2Math()"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <div id="log-box"></div>
+        <div id="action-area">
+            <div class="cube-wrapper"><div class="cube" id="dice-cube"><div class="cube-face face-1"></div><div class="cube-face face-2"></div><div class="cube-face face-3"></div><div class="cube-face face-4"></div><div class="cube-face face-5"></div><div class="cube-face face-6"></div></div></div>
+            <button class="roll-btn" id="roll-btn" onclick="game.rollDice()">🎲 掷骰子</button>
+        </div>
+    </div>
+
+    <div id="board"></div>
+</div>
+
+<!-- 弹窗：开始 -->
+<div id="modal-start" class="modal-overlay" style="display:flex;">
+    <div class="modal-box" style="background:#e3f2fd;">
+        <h2 style="color:#0277bd; margin-top:0;">❄️ 冰雪奇缘大冒险</h2>
+        <div class="start-option selected" id="opt-1" onclick="game.selectMode(1)">
+            <div><b style="color:#e65100">🏆 竞速</b><br><span style="font-size:11px;color:#666">目标金币</span></div>
+            <input type="number" id="input-target" class="custom-input" value="1000" step="100" onclick="event.stopPropagation()">
+        </div>
+        <div class="start-option" id="opt-2" onclick="game.selectMode(2)">
+            <div><b style="color:#0d47a1">⏱️ 限时</b><br><span style="font-size:11px;color:#666">限定回合</span></div>
+            <input type="number" id="input-rounds" class="custom-input" value="20" step="5" onclick="event.stopPropagation()">
+        </div>
+        <div class="start-option" id="opt-3" onclick="game.selectMode(3)">
+            <div><b style="color:#1b5e20">🐢 生存</b><br><span style="font-size:11px;color:#666">直到破产</span></div>
+        </div>
+        <button class="btn-main" onclick="game.start()">❄️ 出发！</button>
+    </div>
+</div>
+
+<!-- 弹窗：数学 -->
+<div id="modal-math" class="modal-overlay">
+    <div class="modal-box" style="background:#e1f5fe; border:4px solid #4fc3f7;">
+        <div style="font-size:40px;">🧮</div>
+        <h3 style="color:#01579b; margin:5px 0;">冰雪算术</h3>
+        <p style="color:#555; margin-bottom:15px;">算出结果，施展魔法！</p>
+        <div class="math-eq" id="math-display">100 + 20 = ?</div>
+        <input type="number" id="math-input" class="math-input" placeholder="?" onkeydown="if(event.key==='Enter') game.checkMath()">
+        <div id="math-msg" style="height:20px; color:#c62828; font-weight:bold; margin-top:10px;"></div>
+        <button class="btn-main" onclick="game.checkMath()">提交答案</button>
+    </div>
+</div>
+
+<!-- 弹窗：交易 -->
+<div id="modal-trade" class="modal-overlay">
+    <div class="modal-box">
+        <h3 id="trade-title" style="margin:0;color:#006064;">地点</h3>
+        <div class="trade-info">
+            <div style="display:flex; justify-content:space-between;"><span>📈 胜率: <b id="trade-prob" style="color:#e65100">0%</b></span><span style="font-size:11px; color:#555">盈亏 ±100%</span></div>
+            <div style="width:100%; height:6px; background:#fff; margin-top:5px; border-radius:3px;"><div id="prob-bar" style="width:0%; height:100%; background:#ffd700; transition:width 0.5s;"></div></div>
+        </div>
+        <div id="trade-input-ui">
+            <p style="margin:5px 0;font-size:14px;color:#455a64">投入: <b id="invest-val" style="color:#e65100;font-size:18px;">0 (0%)</b></p>
+            <input type="range" id="invest-range" value="0" min="0" oninput="game.updateInvestUI()">
+            <div class="btn-grid">
+                <button class="btn-opt" onclick="game.setInvest(0.1)">10%</button><button class="btn-opt" onclick="game.setInvest(0.2)">20%</button>
+                <button class="btn-opt" onclick="game.setInvest(0.5)">50%</button><button class="btn-opt" style="background:#ff7043;color:white" onclick="game.setInvest(1.0)">All</button>
+            </div>
+            <button class="btn-main" onclick="game.confirmTrade()">💰 确认投资</button>
+        </div>
+        <div id="trade-result"></div>
+    </div>
+</div>
+
+<!-- 弹窗：猫巴士/水灵 -->
+<div id="modal-catbus" class="modal-overlay">
+    <div class="modal-box" style="background:#e0f7fa; border:4px solid #29b6f6;">
+        <div style="font-size:50px;">🌊</div>
+        <h3 style="color:#0277bd; margin:5px 0;">水灵 (Nokk)</h3>
+        <p style="color:#555; font-size:13px;">请选择传送地点：</p>
+        <div id="catbus-options"></div>
+    </div>
+</div>
+
+<!-- 弹窗：问答 -->
+<div id="modal-quiz" class="modal-overlay">
+    <div class="modal-box">
+        <div style="font-size:40px; margin-bottom:10px;">🔮</div>
+        <h3 style="margin:0 0 10px 0; color:#1565c0;">帕比爷爷的智慧</h3>
+        <div class="quiz-question" id="quiz-q">题目...</div>
+        <div id="quiz-options"></div>
+        <div id="quiz-feedback"></div>
+        <button class="btn-main" id="quiz-close-btn" style="display:none; background:#90a4ae;" onclick="game.closeQuiz()">继续</button>
+    </div>
+</div>
+
+<!-- 弹窗：信息 -->
+<div id="modal-info" class="modal-overlay">
+    <div class="modal-box">
+        <div id="info-icon" style="font-size:40px; margin-bottom:10px;">🎁</div>
+        <h3 id="info-title" style="color:#00695c">标题</h3>
+        <p id="info-desc" style="font-size:14px; color:#555; margin:15px 0;">内容</p>
+        <button class="btn-main" onclick="game.closeInfo()">确定</button>
+    </div>
+</div>
+
+<!-- 弹窗：结束 -->
+<div id="modal-end" class="modal-overlay">
+    <div class="modal-box" style="border-top:5px solid #ffd700;">
+        <div style="font-size:60px;">🏆</div>
+        <h2 id="end-title" style="margin:10px 0; color:#e65100;">游戏结束!</h2>
+        <p id="end-reason" style="color:#555;">原因</p>
+        <div style="margin-top:15px; display:flex; justify-content:space-between; background:#f1f8e9; padding:10px; border-radius:10px; font-weight:bold; color:#33691e;">
+            <span>⛄ <span id="end-p1-money">0</span></span><span>👸 <span id="end-p2-money">0</span></span>
+        </div>
+        <h3 id="winner-name" style="color:#2e7d32; margin-top:15px;"></h3>
+        <button class="btn-main" onclick="location.reload()">🔄 再玩一次</button>
+    </div>
+</div>
+
+<script>
+/** 
+ * SoundFX - 音效控制
+ */
+const SoundFX = {
+    ctx: null,
+    init: function() {
+        if (!this.ctx) {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+            } catch(e) { console.warn("Web Audio API not supported"); }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+        // 播放无声短音以激活 iOS 音频
+        this.playTone(440, 'sine', 0.01, 0.001);
+    },
+    playTone: function(freq, type, dur, vol=0.1) {
+        if (!this.ctx) return;
+        try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start();
+            osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+    },
+    playRoll: function() { 
+        for(let i=0; i<6; i++) {
+            setTimeout(() => this.playTone(600 + Math.random()*200, 'square', 0.05, 0.05), i*60);
+        }
+    },
+    playStep: function() { this.playTone(400, 'sine', 0.1, 0.1); },
+    playWin: function() { 
+        this.playTone(500, 'triangle', 0.2, 0.1); 
+        setTimeout(() => this.playTone(800, 'triangle', 0.4, 0.1), 200); 
+    },
+    playWarp: function() { 
+        this.playTone(300, 'sine', 0.1, 0.1);
+        setTimeout(() => this.playTone(500, 'sine', 0.2, 0.1), 100);
+        setTimeout(() => this.playTone(800, 'sine', 0.3, 0.1), 200);
+    }
+};
+
+/** 
+ * Game Logic
+ */
+const game = {
+    turn: 0,
+    round: 1,
+    isAnimating: false,
+    mode: 1, // 1:Target, 2:Rounds, 3:Survival
+    target: 1000,
+    maxRounds: 20,
+    diceRot: {x:0, y:0},
+    currentTrade: null,
+    pendingMath: null,
+    p2MathMode: true,
+
+    players: [
+        { id:0, name:"雪宝", money:100, pos:0, color:"#e65100", icon:"⛄" },
+        { id:1, name:"艾莎", money:100, pos:0, color:"#1e88e5", icon:"👸" }
+    ],
+
+    // 32格路径映射 (6x6 - 4)
+    pathMap: [
+        {r:1,c:1,d:'→'},{r:1,c:2,d:'→'},{r:1,c:3,d:'→'},{r:1,c:4,d:'→'},{r:1,c:5,d:'→'},{r:1,c:6,d:'↓'},
+        {r:2,c:6,d:'↓'},{r:3,c:6,d:'↓'},{r:4,c:6,d:'↓'},{r:5,c:6,d:'↓'},{r:6,c:6,d:'←'},
+        {r:6,c:5,d:'←'},{r:6,c:4,d:'←'},{r:6,c:3,d:'←'},{r:6,c:2,d:'←'},{r:6,c:1,d:'↑'},
+        {r:5,c:1,d:'↑'},{r:4,c:1,d:'↑'},{r:3,c:1,d:'↑'},{r:2,c:1,d:'→'},
+        {r:2,c:2,d:'→'},{r:2,c:3,d:'→'},{r:2,c:4,d:'→'},{r:2,c:5,d:'↓'},
+        {r:3,c:5,d:'↓'},{r:4,c:5,d:'↓'},{r:5,c:5,d:'←'},{r:5,c:4,d:'←'},{r:5,c:3,d:'←'},{r:5,c:2,d:'↑'},{r:4,c:2,d:'↑'},{r:3,c:2,d:'↑'}
+    ],
+
+    mapData: [
+        { name: "城堡", type: "t-start", icon: "🏰", info: "津贴+20" },
+        { name: "欧肯杂货", type: "t-city", icon: "🏠", industry: "零售", minP:0.65, maxP:0.80 },
+        { name: "水灵", type: "t-fun", icon: "🌊", info: "随机穿梭" },
+        { name: "驯鹿运输", type: "t-city", icon: "🦌", industry: "运输", minP:0.60, maxP:0.75 },
+        { name: "爱的拥抱", type: "t-luck", icon: "⛄", info: "心情大好" },
+        { name: "汉斯王子", type: "t-trap", icon: "🤴", industry: "谎言", minP:0.10, maxP:0.35 }, 
+        
+        { name: "风灵", type: "t-fun", icon: "🍃", info: "随机" },
+        { name: "北山", type: "t-city", icon: "🏔️", industry: "旅游", minP:0.60, maxP:0.80 },
+        { name: "魔法森林", type: "t-city", icon: "🌲", industry: "探险", minP:0.60, maxP:0.85 },
+        { name: "巧克力店", type: "t-city", icon: "🍫", industry: "美食", minP:0.65, maxP:0.90 },
+        { name: "大坝", type: "t-city", icon: "🧱", industry: "基建", minP:0.55, maxP:0.90 },
+        
+        { name: "阿塔霍兰", type: "t-city", icon: "❄️", industry: "记忆", minP:0.60, maxP:0.80 },
+        { name: "火灵", type: "t-luck", icon: "🦎", info: "热情" },
+        { name: "皇家船厂", type: "t-city", icon: "🚢", industry: "造船", minP:0.60, maxP:0.85 },
+        { name: "地精石穴", type: "t-school", icon: "🪨", info: "胜率UP" },
+        { name: "帕比爷爷", type: "t-quiz", icon: "🔮", info: "智慧答题" },
+        
+        { name: "克里斯托夫", type: "t-city", icon: "🛷", industry: "冰块", minP:0.55, maxP:0.75 },
+        { name: "驯鹿养殖", type: "t-city", icon: "🌾", industry: "农业", minP:0.55, maxP:0.75 },
+        { name: "威斯顿公爵", type: "t-bad", icon: "😠", info: "交税10%" }, 
+        { name: "艾莎魔法", type: "t-city", icon: "✨", industry: "冰雕", minP:0.65, maxP:0.80 },
+        
+        { name: "安娜斗篷", type: "t-city", icon: "🧥", industry: "服饰", minP:0.60, maxP:0.75 },
+        { name: "雪宝", type: "t-fun", icon: "🥕", info: "快乐" },
+        { name: "破碎海滩", type: "t-city", icon: "🌊", industry: "极限", minP:0.60, maxP:0.80 },
+        { name: "诺施德拉", type: "t-city", icon: "🍁", industry: "特产", minP:0.60, maxP:0.75 },
+        
+        { name: "冰雪女王", type: "t-city", icon: "👑", industry: "统治", minP:0.60, maxP:0.80 },
+        { name: "冰雪宫殿", type: "t-super", icon: "💎", info: "资产翻倍" }, 
+        { name: "姐妹情深", type: "t-luck", icon: "👭", info: "获得+15" },
+        { name: "藏红花", type: "t-city", icon: "🌸", industry: "花卉", minP:0.55, maxP:0.75 },
+        { name: "土灵", type: "t-luck", icon: "🗿", info: "坚固" },
+        { name: "皇家庆典", type: "t-city", icon: "🎉", industry: "活动", minP:0.60, maxP:0.80 },
+        { name: "溜冰场", type: "t-city", icon: "⛸️", industry: "娱乐", minP:0.60, maxP:0.80 }
+    ],
+
+    quizBank: [
+        { q: "汉斯王子的投资回报率虽然高，但是他是骗子，这说明？", opts: ["高风险可能血本无归", "他很帅"], ans: 0 },
+        { q: "欧肯在暴风雪时把商品涨价，这叫？", opts: ["供需关系(涨价)", "他很坏"], ans: 0 },
+        { q: "克里斯托夫靠运冰块赚钱，这属于？", opts: ["劳动收入", "捡钱"], ans: 0 },
+        { q: "如果你想建一座冰雪宫殿，钱不够怎么办？", opts: ["存钱理财", "用魔法变(现实不行)"], ans: 0 },
+        { q: "威斯顿公爵想霸占阿伦黛尔的贸易，这叫？", opts: ["垄断/不公平竞争", "友好合作"], ans: 0 },
+        { q: "看到胜率只有10%的陷阱，你应该？", opts: ["坚决不投", "试试运气"], ans: 0 },
+        { q: "艾莎和安娜合作治理国家，说明？", opts: ["团队合作很重要", "一个人更好"], ans: 0 }
+    ],
+
+    // --- 方法 ---
+    toggleP2Math: function() {
+        this.p2MathMode = document.getElementById('math-toggle').checked;
+    },
+
+    selectMode: function(m) {
+        this.mode = m;
+        document.querySelectorAll('.start-option').forEach(el => el.classList.remove('selected'));
+        document.getElementById('opt-'+m).classList.add('selected');
+    },
+
+    start: function() {
+        SoundFX.init(); // 尝试初始化音效
+        document.getElementById('modal-start').style.display = 'none';
+        
+        // 读取配置
+        if(this.mode===1) this.target = parseInt(document.getElementById('input-target').value) || 1000;
+        if(this.mode===2) this.maxRounds = parseInt(document.getElementById('input-rounds').value) || 20;
+
+        let goalStr = this.mode===1 ? `🏆 ${this.target}` : (this.mode===2 ? `⏱️ ${this.maxRounds}R` : "💀 生存");
+        document.getElementById('goal-text').innerText = goalStr;
+
+        this.initBoard();
+        this.updateUI();
+        this.log("欢迎来到阿伦黛尔！", "#0288d1");
+    },
+
+    initBoard: function() {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        
+        // 中间仪表盘
+        const center = document.createElement('div');
+        center.className = 'center-area';
+        center.innerHTML = `<div id="center-icon" class="center-icon">❄️</div><div id="center-title" style="font-weight:bold;color:#0277bd;font-size:16px;">阿伦黛尔</div><div id="center-desc" style="font-size:12px;color:#0097a7;">魔法与财富</div>`;
+        board.appendChild(center);
+
+        // 格子
+        this.mapData.forEach((d, i) => {
+            let div = document.createElement('div');
+            div.className = `cell ${d.type}`;
+            div.style.gridRow = this.pathMap[i].r;
+            div.style.gridColumn = this.pathMap[i].c;
+            div.setAttribute('data-arrow', this.pathMap[i].d);
+            div.innerHTML = `<div class="cell-icon">${d.icon}</div><div class="cell-name">${d.name}</div><div class="cell-info">${d.industry || d.info}</div>`;
+            board.appendChild(div);
+        });
+
+        // 棋子
+        this.players.forEach(p => {
+            let el = document.createElement('div');
+            el.className = 'token-container';
+            el.innerHTML = `<div class="character-sprite">${p.icon}</div>`;
+            board.appendChild(el);
+            p.el = el;
+        });
+
+        // 初始位置
+        setTimeout(() => {
+            this.placePlayer(this.players[0], 0);
+            this.placePlayer(this.players[1], 0);
+        }, 100);
+    },
+
+    placePlayer: function(p, idx, anim=false) {
+        if(idx >= this.mapData.length) idx = 0;
+        p.pos = idx;
+        const cell = document.querySelectorAll('.cell')[idx];
+        if(!cell) return;
+        const cRect = cell.getBoundingClientRect();
+        const bRect = document.getElementById('board').getBoundingClientRect();
+        
+        let cx = cRect.left - bRect.left + cRect.width/2;
+        let cy = cRect.top - bRect.top + cRect.height/2;
+        let ox = p.id===0 ? -12 : 12;
+
+        if(anim) {
+            let currC = this.pathMap[idx].c;
+            let nextIdx = (idx+1) % this.mapData.length;
+            if(this.pathMap[nextIdx].c > currC) p.el.style.setProperty('--face-dir', 1);
+            else if(this.pathMap[nextIdx].c < currC) p.el.style.setProperty('--face-dir', -1);
+        }
+
+        p.el.style.left = (cx + ox - 20) + 'px';
+        p.el.style.top = (cy - 40) + 'px';
+    },
+
+    // --- 游戏流程 ---
+    rollDice: function() {
+        if(this.isAnimating) return;
+        this.isAnimating = true;
+        document.getElementById('roll-btn').disabled = true;
+        SoundFX.playRoll();
+        
+        const val = Math.floor(Math.random()*6)+1;
+        const faces = [{x:0,y:0}, {x:0,y:-90}, {x:-90,y:0}, {x:90,y:0}, {x:0,y:90}, {x:0,y:180}];
+        
+        let nextX = this.diceRot.x + 360*2 + faces[val-1].x - (this.diceRot.x%360);
+        let nextY = this.diceRot.y + 360*2 + faces[val-1].y - (this.diceRot.y%360);
+        this.diceRot = {x:nextX, y:nextY};
+        
+        document.getElementById('dice-cube').style.transform = `rotateX(${nextX}deg) rotateY(${nextY}deg)`;
+
+        setTimeout(() => {
+            this.log(`🎲 点数: <b>${val}</b>`);
+            this.moveStep(this.players[this.turn], val);
+        }, 1200);
+    },
+
+    moveStep: function(p, steps) {
+        let left = steps;
+        p.el.classList.add('walking');
+        
+        let timer = setInterval(() => {
+            let next = (p.pos + 1) % this.mapData.length;
+            SoundFX.playStep();
+            
+            // 经过起点
+            if(next === 0 && p.pos === this.mapData.length - 1) {
+                p.money += 20;
+                this.log(`🏰 经过城堡，获得津贴+20`, '#00bcd4');
+                this.updateUI();
+            }
+
+            this.placePlayer(p, next, true);
+            left--;
+            
+            if(left <= 0) {
+                clearInterval(timer);
+                p.el.classList.remove('walking');
+                setTimeout(() => this.handleEvent(p), 300);
+            }
+        }, 250);
+    },
+
+    handleEvent: function(p) {
+        const d = this.mapData[p.pos];
+        this.log(`${p.name} 来到了 ${d.name}`);
+        this.updateCenter(d.icon, d.name, d.industry || d.info);
+
+        if(d.type === 't-city' || d.type === 't-trap') {
+            this.openTradeModal(d, p);
+        } else if(d.name === "帕比爷爷") {
+            this.openQuiz(p);
+        } else if(d.name === "水灵") {
+            this.showCatbusChoice(p);
+        } else if(d.name === "卡西法" || d.name === "山兽神" || d.name === "龙猫礼物" || d.name === "白龙" || d.name === "姐妹情深" || d.name === "火灵" || d.name === "土灵" || d.name === "爱的拥抱") {
+            SoundFX.playWin();
+            this.triggerMath(p, 10, ()=> { this.log("✨ 好运降临 +10", "#e65100"); this.updateUI(); this.nextTurn(); });
+        } else if(d.type === 't-fun') {
+            let amt = Math.random()>0.5 ? 15 : -10;
+            this.triggerMath(p, amt, ()=> { this.log(amt>0?"🎁 意外惊喜":"💨 失去一点金币", "#555"); this.updateUI(); this.nextTurn(); });
+        } else if(d.name === "威斯顿公爵") { 
+            let loss = -Math.round(p.money * 0.1);
+            this.triggerMath(p, loss, ()=> { this.log("😠 被公爵收走了税金", "red"); this.updateUI(); this.nextTurn(); });
+        } else if(d.type === 't-school') {
+            this.triggerMath(p, -5, ()=> { p.buff = 0.15; this.log("🪨 学习知识，胜率提升", "blue"); this.updateUI(); this.nextTurn(); });
+        } else if(d.type === 't-super') {
+            let bonus = p.money; // Double
+            SoundFX.playWin();
+            this.triggerMath(p, bonus, ()=> { this.log("💎 发现冰雪宝藏，资产翻倍！", "#8e24aa"); this.updateUI(); this.nextTurn(); });
+        } else {
+            this.nextTurn();
+        }
+    },
+
+    // --- 水灵(传送)逻辑 ---
+    showCatbusChoice: function(p) {
+        let choices = [];
+        while(choices.length < 3) {
+            let r = Math.floor(Math.random() * this.mapData.length);
+            if(r !== p.pos && !choices.includes(r)) choices.push(r);
+        }
+        
+        const container = document.getElementById('catbus-options');
+        container.innerHTML = '';
+        choices.forEach(idx => {
+            let d = this.mapData[idx];
+            let btn = document.createElement('div');
+            btn.className = 'catbus-btn';
+            btn.innerHTML = `<div class="catbus-icon">${d.icon}</div><div><b>${d.name}</b><br><span style="font-size:10px;color:#666">${d.info||d.industry}</span></div>`;
+            btn.onclick = () => {
+                SoundFX.playWarp();
+                document.getElementById('modal-catbus').style.display = 'none';
+                this.placePlayer(p, idx);
+                setTimeout(() => this.handleEvent(p), 500);
+            };
+            container.appendChild(btn);
+        });
+        document.getElementById('modal-catbus').style.display = 'flex';
+    },
+
+    // --- 智能算术逻辑 ---
+    triggerMath: function(player, amount, callback) {
+        if(amount === 0) { callback(); return; } 
+        let changeVal = Math.round(amount);
+
+        let autoCalc = false;
+        if(player.id === 0) autoCalc = true;
+        else if(player.id === 1 && !this.p2MathMode) autoCalc = true;
+
+        if(autoCalc) {
+            player.money += changeVal;
+            this.updateUI();
+            let sign = changeVal > 0 ? "+" : "";
+            this.log(`(自动) ${player.name} 资金 ${sign}${changeVal}`, player.id===0?"#e65100":"#0288d1");
+            setTimeout(callback, 800);
+            return;
+        }
+
+        this.pendingMath = { player: player, change: changeVal, callback: callback };
+        let current = Math.floor(player.money);
+        let sign = changeVal >= 0 ? "+" : "-";
+        document.getElementById('math-display').innerText = `${current} ${sign} ${Math.abs(changeVal)} = ?`;
+        document.getElementById('math-input').value = ""; document.getElementById('math-msg').innerText = "";
+        document.getElementById('modal-math').style.display = 'flex'; document.getElementById('math-input').focus();
+    },
+
+    checkMath: function() {
+        let val = parseInt(document.getElementById('math-input').value);
+        if(val === this.pendingMath.player.money + this.pendingMath.change) {
+            document.getElementById('modal-math').style.display = 'none';
+            this.pendingMath.player.money = val;
+            if(this.pendingMath.callback) this.pendingMath.callback();
+        } else {
+            document.getElementById('math-msg').innerText = "不对哦，再算算！";
+            document.querySelector('#modal-math .modal-box').classList.add('shake');
+            setTimeout(()=>document.querySelector('#modal-math .modal-box').classList.remove('shake'), 500);
+        }
+    },
+
+    // --- 交易 ---
+    openTradeModal: function(data, p) {
+        this.currentTrade = { p: p, baseP: (Math.random()*(data.maxP-data.minP)+data.minP) };
+        let finalP = this.currentTrade.baseP + (p.buff||0); if(finalP>0.95) finalP=0.95;
+        this.currentTrade.finalP = finalP;
+        
+        document.getElementById('modal-trade').style.display = 'flex';
+        document.getElementById('trade-title').innerText = `${data.icon} ${data.name}`;
+        document.getElementById('trade-prob').innerText = `${Math.round(finalP*100)}%`;
+        document.getElementById('prob-bar').style.width = `${finalP*100}%`;
+        document.getElementById('trade-prob').style.color = finalP < 0.5 ? '#e74c3c' : '#e65100';
+        document.getElementById('invest-range').max = Math.floor(p.money); 
+        document.getElementById('invest-range').value = 0; 
+        this.updateInvestUI();
+        document.getElementById('trade-input-ui').style.display='block'; 
+        document.getElementById('trade-result').innerHTML='';
+    },
+    
+    updateInvestUI: function() {
+        let v = document.getElementById('invest-range').value;
+        let m = document.getElementById('invest-range').max;
+        document.getElementById('invest-val').innerText = `${v} (${m>0?Math.round(v/m*100):0}%)`;
+    },
+    
+    setInvest: function(r) { 
+        document.getElementById('invest-range').value = Math.round(this.currentTrade.p.money*r); 
+        this.updateInvestUI(); 
+    },
+    
+    confirmTrade: function() {
+        let bet = parseInt(document.getElementById('invest-range').value);
+        if(bet === 0) { document.getElementById('modal-trade').style.display='none'; this.nextTurn(); return; }
+        
+        document.getElementById('trade-input-ui').style.display='none';
+        let win = Math.random() <= this.currentTrade.finalP;
+        let html = win ? `<div class="trade-info" style="border:1px solid #66bb6a;background:#e8f5e9"><b>✨ 成功</b></div>` : `<div class="trade-info" style="border:1px solid #ef5350;background:#ffebee"><b>🥀 失败</b></div>`;
+        document.getElementById('trade-result').innerHTML = html;
+        if(win) SoundFX.playWin();
+        
+        setTimeout(() => { 
+            document.getElementById('modal-trade').style.display='none'; 
+            this.triggerMath(this.currentTrade.p, win?bet:-bet, ()=>{ 
+                if(win) this.log(`盈利 ${bet}`,'green'); else this.log(`亏损 ${bet}`,'red'); 
+                this.updateUI(); this.nextTurn(); 
+            }); 
+        }, 1000);
+    },
+
+    openQuiz: function(p) {
+        let q = this.quizBank[Math.floor(Math.random()*this.quizBank.length)];
+        document.getElementById('quiz-q').innerText = q.q;
+        const div = document.getElementById('quiz-options'); div.innerHTML='';
+        q.opts.forEach((o,i)=> {
+            let b=document.createElement('button'); b.className='quiz-btn'; b.innerText=["A. ","B. "][i]+o;
+            b.onclick=()=>{
+                div.innerHTML = i===q.ans ? `<div style="color:green;font-weight:bold;margin-top:10px">✅ 正确！</div>` : `<div style="color:red;font-weight:bold;margin-top:10px">❌ 错误</div>`;
+                document.getElementById('quiz-close-btn').style.display='block';
+                if(i===q.ans) SoundFX.playWin();
+                document.getElementById('quiz-close-btn').onclick=()=>{
+                    document.getElementById('modal-quiz').style.display='none';
+                    this.triggerMath(p, i===q.ans?10:-5, ()=>{this.updateUI(); this.nextTurn();});
+                }
+            }; div.appendChild(b);
+        });
+        document.getElementById('quiz-close-btn').style.display='none'; document.getElementById('modal-quiz').style.display='flex';
+    },
+
+    closeQuiz: function() { document.getElementById('modal-quiz').style.display='none'; this.nextTurn(); },
+    
+    updateUI: function() {
+        document.getElementById('p1-money').innerText = Math.floor(this.players[0].money);
+        document.getElementById('p2-money').innerText = Math.floor(this.players[1].money);
+        
+        let p1p = this.mode===1 ? Math.min(100, this.players[0].money/this.target*100) : 0;
+        document.getElementById('p1-progress').style.width = p1p+"%";
+        document.getElementById('p2-progress').style.width = (this.mode===1?Math.min(100, this.players[1].money/this.target*100):0)+"%";
+        
+        document.getElementById('turn-text').innerText = "R: "+this.round;
+        document.getElementById('p1-card').classList.toggle('active', this.turn===0);
+        document.getElementById('p2-card').classList.toggle('active', this.turn===1);
+    },
+
+    nextTurn: function() {
+        if(this.players[this.turn].money <= 0) { this.endGame("金币耗尽"); return; }
+        if(this.mode===1 && this.players[this.turn].money >= this.target) { this.endGame("达成目标"); return; }
+
+        this.turn = (this.turn + 1) % 2;
+        if(this.turn === 0) {
+            this.round++;
+            if(this.mode===2 && this.round > this.maxRounds) { this.endGame("回合结束"); return; }
+        }
+
+        this.isAnimating = false;
+        document.getElementById('roll-btn').disabled = false;
+        this.updateUI();
+        this.log(`👉 轮到 ${this.players[this.turn].name}`, this.turn===0?"#e65100":"#1e88e5");
+    },
+
+    endGame: function(reason) {
+        document.getElementById('modal-end').style.display='flex';
+        document.getElementById('end-reason').innerText = reason;
+        document.getElementById('end-p1-money').innerText=this.players[0].money;
+        document.getElementById('end-p2-money').innerText=this.players[1].money;
+        let win = this.players[0].money > this.players[1].money ? "⛄ 雪宝" : "👸 艾莎";
+        document.getElementById('winner-name').innerText = "🎉 " + win + " 获胜!";
+    },
+
+    log: function(msg, color='#333') {
+        let d = document.createElement('div');
+        d.innerHTML = msg; d.style.color = color;
+        document.getElementById('log-box').prepend(d);
+    },
+    
+    updateCenter: function(i,t,d) {
+        document.getElementById('center-icon').innerText=i;
+        document.getElementById('center-title').innerText=t;
+        document.getElementById('center-desc').innerText=d;
+    },
+    
+    closeInfo: function() { document.getElementById('modal-info').style.display='none'; this.nextTurn(); }
+};
+
+window.onload = function() {
+    game.log("准备就绪...", "#999");
+};
+</script>
+</body>
+</html>
