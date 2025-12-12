@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>疯狂动物城：王牌理财师</title>
+    <title>迪士尼梦幻大富翁</title>
     <style>
         :root {
-            --p1-color: #e65100; /* 尼克橙 */
-            --p2-color: #1e88e5; /* 朱迪蓝 */
+            --p1-color: #d50000; /* 米奇红 */
+            --p2-color: #00b0ff; /* 艾莎蓝 */
             --font-main: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            --primary-btn: linear-gradient(to bottom, #29b6f6, #0288d1);
+            --primary-btn: linear-gradient(to bottom, #ab47bc, #7b1fa2); /* 魔法紫 */
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: var(--font-main);
-            /* 动物城昼夜交替感 */
-            background: linear-gradient(160deg, #b2dfdb 0%, #3f51b5 100%);
+            /* 梦幻紫粉渐变 */
+            background: linear-gradient(160deg, #e1bee7 0%, #b3e5fc 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -34,8 +34,8 @@
             height: 98vh; 
             max-height: 850px;
             background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(100,0,100,0.2);
             display: grid;
             grid-template-columns: 260px 1fr;
             padding: 15px;
@@ -52,35 +52,35 @@
             flex-direction: column;
             gap: 10px;
             height: 100%;
-            border: 2px solid #4dd0e1;
+            border: 3px solid #e1bee7;
             overflow: hidden;
         }
 
         .game-status {
-            background: #009688; color: #fff; padding: 10px; border-radius: 10px; font-size: 13px; flex-shrink: 0;
+            background: #8e24aa; color: #fff; padding: 10px; border-radius: 10px; font-size: 13px; flex-shrink: 0;
         }
         .progress-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.3); border-radius: 3px; margin-top: 5px; overflow: hidden; }
-        .progress-bar-fill { height: 100%; background: #ffd700; width: 0%; transition: width 0.5s; }
+        .progress-bar-fill { height: 100%; background: #ffd700; width: 0%; transition: width 0.5s; box-shadow: 0 0 5px #ffeb3b; }
 
         .player-card {
-            padding: 8px; border-radius: 10px; border: 2px solid #e0f7fa; background: #fff; transition: all 0.3s; flex-shrink: 0; position: relative;
+            padding: 8px; border-radius: 10px; border: 2px solid #f3e5f5; background: #fff; transition: all 0.3s; flex-shrink: 0; position: relative;
         }
         .player-card.active {
-            border-color: #ff9800; background-color: #fff3e0; transform: scale(1.02); box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            border-color: #ba68c8; background-color: #fce4ec; transform: scale(1.02); box-shadow: 0 3px 8px rgba(186,104,200,0.2);
         }
-        .money-display { font-size: 22px; color: #006064; font-weight: bold; font-family: monospace; display: block; margin-top: 2px; }
+        .money-display { font-size: 22px; color: #4a148c; font-weight: bold; font-family: monospace; display: block; margin-top: 2px; }
 
         /* 开关样式 */
-        .math-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; font-size: 11px; color: #666; background: #e0f2f1; padding: 4px 8px; border-radius: 15px; }
+        .math-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; font-size: 11px; color: #666; background: #f3e5f5; padding: 4px 8px; border-radius: 15px; }
         .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 18px; }
         .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #1e88e5; }
+        input:checked + .slider { background-color: #00b0ff; }
         input:checked + .slider:before { transform: translateX(16px); }
 
         #log-box {
-            flex-grow: 1; overflow-y: auto; font-size: 12px; border-top: 1px dashed #ccc; padding: 5px 0; color: #555; line-height: 1.4;
+            flex-grow: 1; overflow-y: auto; font-size: 12px; border-top: 2px dashed #e1bee7; padding: 5px 0; color: #555; line-height: 1.4;
         }
 
         #action-area {
@@ -90,18 +90,18 @@
         /* 3D骰子 */
         .cube-wrapper { width: 50px; height: 50px; position: absolute; top: 15px; transform-style: preserve-3d; }
         .cube { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 1.2s ease-out; }
-        .cube-face { position: absolute; width: 50px; height: 50px; background: #fff; border: 2px solid #ff9800; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; color: #e65100; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+        .cube-face { position: absolute; width: 50px; height: 50px; background: #fff; border: 2px solid #ce93d8; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; color: #7b1fa2; box-shadow: inset 0 0 5px rgba(206,147,216,0.3); }
         .face-1 { transform: rotateY(0deg) translateZ(25px); } .face-2 { transform: rotateY(90deg) translateZ(25px); }
         .face-3 { transform: rotateX(-90deg) translateZ(25px); } .face-4 { transform: rotateX(90deg) translateZ(25px); }
         .face-5 { transform: rotateY(-90deg) translateZ(25px); } .face-6 { transform: rotateY(180deg) translateZ(25px); }
-        .face-1::after { content: "🥕"; } .face-2::after { content: "2"; } .face-3::after { content: "3"; } 
+        .face-1::after { content: "✨"; } .face-2::after { content: "2"; } .face-3::after { content: "3"; } 
         .face-4::after { content: "4"; } .face-5::after { content: "5"; } .face-6::after { content: "6"; }
 
         .roll-btn {
-            background: var(--primary-btn); color: white; border: none; padding: 12px 0; width: 100%; font-size: 18px; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 #0277bd; margin-top: 70px; transition: transform 0.1s;
+            background: var(--primary-btn); color: white; border: none; padding: 12px 0; width: 100%; font-size: 18px; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 #7b1fa2; margin-top: 70px; transition: transform 0.1s;
         }
-        .roll-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0277bd; }
-        .roll-btn:disabled { background: #cfd8dc; cursor: not-allowed; box-shadow: none; transform: translateY(3px); }
+        .roll-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #7b1fa2; }
+        .roll-btn:disabled { background: #e0e0e0; cursor: not-allowed; box-shadow: none; transform: translateY(3px); }
 
         /* --- 右侧棋盘 (6x6 网格, 32格路径, 中间空4格) --- */
         #board {
@@ -111,15 +111,15 @@
             gap: 12px;
             position: relative;
             padding: 20px;
-            background: #e0f7fa;
+            background: #f3e5f5;
             border-radius: 20px;
-            border: 4px solid #4dd0e1;
+            border: 4px solid #ce93d8;
             height: 100%;
             box-sizing: border-box;
         }
 
         .cell {
-            background: #fff; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; position: relative; text-align: center; font-weight: bold; box-shadow: 0 4px 0 #b0bec5; padding: 2px; overflow: hidden; border: 1px solid #cfd8dc; z-index: 1; transition: transform 0.2s;
+            background: #fff; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; position: relative; text-align: center; font-weight: bold; box-shadow: 0 4px 0 #d1c4e9; padding: 2px; overflow: hidden; border: 1px solid #e1bee7; z-index: 1; transition: transform 0.2s;
         }
         
         .cell::after {
@@ -127,34 +127,34 @@
         }
 
         .cell-icon { font-size: 28px; margin-bottom: 2px; line-height: 1; }
-        .cell-name { font-size: 11px; color: #37474f; width: 95%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cell-info { font-size: 10px; color: #78909c; transform: scale(0.9); }
+        .cell-name { font-size: 11px; color: #4a148c; width: 95%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cell-info { font-size: 10px; color: #9c27b0; transform: scale(0.9); }
 
         /* 格子类型 */
         .t-start { background: #dcedc8; border-bottom: 4px solid #8bc34a; } 
-        .t-city  { border-bottom: 4px solid #29b6f6; } 
-        .t-bad   { background: #ffccbc; border-bottom: 4px solid #ff7043; } 
+        .t-city  { border-bottom: 4px solid #4fc3f7; } 
+        .t-bad   { background: #ffcdd2; border-bottom: 4px solid #e57373; } 
         .t-luck  { background: #fff9c4; border-bottom: 4px solid #fdd835; } 
         .t-trap  { background: #546e7a; color: #fff; border-bottom: 4px solid #263238; } 
         .t-trap .cell-name { color: #fff; } .t-trap .cell-info { color: #cfd8dc; }
         .t-fun   { background: #ffe0b2; border-bottom: 4px solid #ffa726; } 
-        .t-quiz  { background: #e1bee7; border-bottom: 4px solid #ab47bc; } 
+        .t-quiz  { background: #bbdefb; border-bottom: 4px solid #42a5f5; } 
         .t-school{ background: #b2dfdb; border-bottom: 4px solid #26a69a; }
-        .t-super { background: #ce93d8; border-bottom: 4px solid #8e24aa; } 
+        .t-super { background: #e1bee7; border-bottom: 4px solid #ab47bc; } 
 
         /* 中间留白区域 (2x2格) */
         .center-area {
             grid-column: 3 / 5;
             grid-row: 3 / 5;
-            background: linear-gradient(135deg, #ffffff 0%, #e0f2f1 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #f3e5f5 100%);
             border-radius: 50%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            color: #006064;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.05), 0 0 0 8px #80deea;
+            color: #4a148c;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05), 0 0 0 8px #e1bee7;
             z-index: 0;
             padding: 10px;
         }
@@ -176,24 +176,24 @@
 
         .btn-main { background: var(--primary-btn); color: white; width: 100%; padding: 12px; border:none; border-radius: 10px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 15px; }
         
-        .start-option { background: #f1f8e9; border: 2px solid #fff; padding: 12px; margin: 8px 0; border-radius: 10px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; }
-        .start-option.selected { border-color: #ff9800; background: #fff3e0; }
-        .custom-input { width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; text-align: center; color: #e65100; pointer-events: auto; }
+        .start-option { background: #f3e5f5; border: 2px solid #fff; padding: 12px; margin: 8px 0; border-radius: 10px; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+        .start-option.selected { border-color: #ab47bc; background: #e1bee7; }
+        .custom-input { width: 60px; padding: 5px; border: 1px solid #ccc; border-radius: 5px; text-align: center; color: #4a148c; pointer-events: auto; }
 
-        .math-eq { font-size: 32px; font-weight: bold; color: #006064; margin: 15px 0; font-family: 'Verdana'; }
-        .math-input { font-size: 24px; padding: 8px; width: 120px; text-align: center; border: 3px solid #26c6da; border-radius: 8px; outline: none; }
+        .math-eq { font-size: 32px; font-weight: bold; color: #1565c0; margin: 15px 0; font-family: 'Verdana'; }
+        .math-input { font-size: 24px; padding: 8px; width: 120px; text-align: center; border: 3px solid #64b5f6; border-radius: 8px; outline: none; }
         
-        .quiz-btn { display: block; width: 100%; padding: 10px; margin: 8px 0; background: #f5f5f5; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; text-align: left; font-size: 14px; }
-        .quiz-btn:hover { background: #e0f7fa; border-color: #26c6da; }
+        .quiz-btn { display: block; width: 100%; padding: 10px; margin: 8px 0; background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; cursor: pointer; text-align: left; font-size: 14px; }
+        .quiz-btn:hover { background: #bbdefb; border-color: #2196f3; }
 
-        .trade-info { background: #e0f2f1; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: left; border: 1px solid #b2dfdb; }
-        input[type="range"] { width: 100%; margin: 15px 0; accent-color: #ff9800; cursor: pointer; }
+        .trade-info { background: #f3e5f5; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: left; border: 1px solid #ce93d8; }
+        input[type="range"] { width: 100%; margin: 15px 0; accent-color: #ab47bc; cursor: pointer; }
         .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .btn-opt { padding: 8px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; background: #cfd8dc; }
-        .btn-opt:hover { background: #b0bec5; }
+        .btn-opt { padding: 8px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; background: #e0e0e0; }
+        .btn-opt:hover { background: #bdbdbd; }
         
-        .catbus-btn { background: #fff9c4; border: 2px solid #fbc02d; padding: 10px; margin: 8px 0; border-radius: 10px; cursor: pointer; text-align: left; display: flex; align-items: center; width: 100%; transition: 0.2s; }
-        .catbus-btn:hover { transform: scale(1.02); background: #fff59d; }
+        .catbus-btn { background: #e1bee7; border: 2px solid #8e24aa; padding: 10px; margin: 8px 0; border-radius: 10px; cursor: pointer; text-align: left; display: flex; align-items: center; width: 100%; transition: 0.2s; }
+        .catbus-btn:hover { transform: scale(1.02); background: #ce93d8; }
         .catbus-icon { font-size: 24px; margin-right: 10px; }
 
         .shake { animation: shake 0.4s; }
@@ -207,19 +207,19 @@
     <div id="control-panel">
         <div class="game-status">
             <div style="display:flex; justify-content:space-between;"><span>🎯 目标: <span id="goal-text">1000</span></span><span id="turn-text">R: 1</span></div>
-            <div class="progress-bar-bg" title="P1"><div id="p1-progress" class="progress-bar-fill" style="background:#e65100"></div></div>
-            <div class="progress-bar-bg" title="P2"><div id="p2-progress" class="progress-bar-fill" style="background:#1e88e5"></div></div>
+            <div class="progress-bar-bg" title="P1"><div id="p1-progress" class="progress-bar-fill" style="background:#d50000"></div></div>
+            <div class="progress-bar-bg" title="P2"><div id="p2-progress" class="progress-bar-fill" style="background:#00b0ff"></div></div>
         </div>
         
-        <div style="background:#e0f7fa; border:1px solid #4dd0e1; border-radius:8px; padding:8px; text-align:center; font-size:12px; color:#006064; flex-shrink:0;"><b>💰 凯利公式</b><br>胜率高就投，胜率低就撤</div>
+        <div style="background:#e1bee7; border:1px solid #ba68c8; border-radius:8px; padding:8px; text-align:center; font-size:12px; color:#4a148c; flex-shrink:0;"><b>💰 凯利公式</b><br>胜率高就投，胜率低就撤</div>
         
         <div id="p1-card" class="player-card active">
-            <div style="display:flex; justify-content:space-between; align-items:center"><span>🦊 尼克</span><span id="p1-money" class="money-display">100</span></div>
+            <div style="display:flex; justify-content:space-between; align-items:center"><span>🐭 米奇</span><span id="p1-money" class="money-display">100</span></div>
             <div style="font-size:10px; color:#aaa; margin-top:2px;">(自动结算)</div>
         </div>
         
         <div id="p2-card" class="player-card">
-            <div style="display:flex; justify-content:space-between; align-items:center"><span>🐰 朱迪</span><span id="p2-money" class="money-display">100</span></div>
+            <div style="display:flex; justify-content:space-between; align-items:center"><span>👸 艾莎</span><span id="p2-money" class="money-display">100</span></div>
             <div class="math-toggle-row">
                 <span>口算练习</span>
                 <label class="switch"><input type="checkbox" id="math-toggle" checked onchange="game.toggleP2Math()"><span class="slider"></span></label>
@@ -229,7 +229,7 @@
         <div id="log-box"></div>
         <div id="action-area">
             <div class="cube-wrapper"><div class="cube" id="dice-cube"><div class="cube-face face-1"></div><div class="cube-face face-2"></div><div class="cube-face face-3"></div><div class="cube-face face-4"></div><div class="cube-face face-5"></div><div class="cube-face face-6"></div></div></div>
-            <button class="roll-btn" id="roll-btn" onclick="game.rollDice()">🎲 掷骰子</button>
+            <button class="roll-btn" id="roll-btn" onclick="game.rollDice()">🎲 掷出魔法</button>
         </div>
     </div>
 
@@ -238,29 +238,29 @@
 
 <!-- 弹窗：开始 -->
 <div id="modal-start" class="modal-overlay" style="display:flex;">
-    <div class="modal-box" style="background:#e3f2fd;">
-        <h2 style="color:#0277bd; margin-top:0;">🏙️ 疯狂动物城之旅</h2>
+    <div class="modal-box" style="background:#fff0f5;">
+        <h2 style="color:#8e24aa; margin-top:0;">🏰 迪士尼梦幻之旅</h2>
         <div class="start-option selected" id="opt-1" onclick="game.selectMode(1)">
-            <div><b style="color:#e65100">🏆 竞速</b><br><span style="font-size:11px;color:#666">目标金币</span></div>
+            <div><b style="color:#d81b60">🏆 竞速</b><br><span style="font-size:11px;color:#666">目标金币</span></div>
             <input type="number" id="input-target" class="custom-input" value="1000" step="100" onclick="event.stopPropagation()">
         </div>
         <div class="start-option" id="opt-2" onclick="game.selectMode(2)">
-            <div><b style="color:#0d47a1">⏱️ 限时</b><br><span style="font-size:11px;color:#666">限定回合</span></div>
+            <div><b style="color:#1e88e5">⏱️ 限时</b><br><span style="font-size:11px;color:#666">限定回合</span></div>
             <input type="number" id="input-rounds" class="custom-input" value="20" step="5" onclick="event.stopPropagation()">
         </div>
         <div class="start-option" id="opt-3" onclick="game.selectMode(3)">
-            <div><b style="color:#1b5e20">🐢 生存</b><br><span style="font-size:11px;color:#666">直到破产</span></div>
+            <div><b style="color:#43a047">🐢 生存</b><br><span style="font-size:11px;color:#666">直到破产</span></div>
         </div>
-        <button class="btn-main" onclick="game.start()">🚓 出发！</button>
+        <button class="btn-main" onclick="game.start()">✨ 开启魔法！</button>
     </div>
 </div>
 
 <!-- 弹窗：数学 -->
 <div id="modal-math" class="modal-overlay">
-    <div class="modal-box" style="background:#e1f5fe; border:4px solid #4fc3f7;">
+    <div class="modal-box" style="background:#e3f2fd; border:4px solid #64b5f6;">
         <div style="font-size:40px;">🧮</div>
-        <h3 style="color:#01579b; margin:5px 0;">算术挑战</h3>
-        <p style="color:#555; margin-bottom:15px;">算出结果，获得收益！</p>
+        <h3 style="color:#1565c0; margin:5px 0;">魔法算术</h3>
+        <p style="color:#555; margin-bottom:15px;">算出结果，魔力生效！</p>
         <div class="math-eq" id="math-display">100 + 20 = ?</div>
         <input type="number" id="math-input" class="math-input" placeholder="?" onkeydown="if(event.key==='Enter') game.checkMath()">
         <div id="math-msg" style="height:20px; color:#c62828; font-weight:bold; margin-top:10px;"></div>
@@ -271,17 +271,17 @@
 <!-- 弹窗：交易 -->
 <div id="modal-trade" class="modal-overlay">
     <div class="modal-box">
-        <h3 id="trade-title" style="margin:0;color:#006064;">地点</h3>
+        <h3 id="trade-title" style="margin:0;color:#4a148c;">地点</h3>
         <div class="trade-info">
             <div style="display:flex; justify-content:space-between;"><span>📈 胜率: <b id="trade-prob" style="color:#e65100">0%</b></span><span style="font-size:11px; color:#555">盈亏 ±100%</span></div>
             <div style="width:100%; height:6px; background:#fff; margin-top:5px; border-radius:3px;"><div id="prob-bar" style="width:0%; height:100%; background:#ffd700; transition:width 0.5s;"></div></div>
         </div>
         <div id="trade-input-ui">
-            <p style="margin:5px 0;font-size:14px;color:#455a64">投入: <b id="invest-val" style="color:#e65100;font-size:18px;">0 (0%)</b></p>
+            <p style="margin:5px 0;font-size:14px;color:#455a64">投入: <b id="invest-val" style="color:#d81b60;font-size:18px;">0 (0%)</b></p>
             <input type="range" id="invest-range" value="0" min="0" oninput="game.updateInvestUI()">
             <div class="btn-grid">
                 <button class="btn-opt" onclick="game.setInvest(0.1)">10%</button><button class="btn-opt" onclick="game.setInvest(0.2)">20%</button>
-                <button class="btn-opt" onclick="game.setInvest(0.5)">50%</button><button class="btn-opt" style="background:#ff7043;color:white" onclick="game.setInvest(1.0)">All</button>
+                <button class="btn-opt" onclick="game.setInvest(0.5)">50%</button><button class="btn-opt" style="background:#ba68c8;color:white" onclick="game.setInvest(1.0)">All</button>
             </div>
             <button class="btn-main" onclick="game.confirmTrade()">💰 确认投资</button>
         </div>
@@ -289,12 +289,12 @@
     </div>
 </div>
 
-<!-- 弹窗：猫巴士 -->
+<!-- 弹窗：魔法马车 -->
 <div id="modal-catbus" class="modal-overlay">
-    <div class="modal-box" style="background:#fff3e0; border:4px solid #ffb74d;">
-        <div style="font-size:50px;">🚅</div>
-        <h3 style="color:#e65100; margin:5px 0;">动物城快线</h3>
-        <p style="color:#555; font-size:13px;">请选择下一站：</p>
+    <div class="modal-box" style="background:#f3e5f5; border:4px solid #ab47bc;">
+        <div style="font-size:50px;">🪄</div>
+        <h3 style="color:#6a1b9a; margin:5px 0;">魔法马车</h3>
+        <p style="color:#555; font-size:13px;">请选择目的地：</p>
         <div id="catbus-options"></div>
     </div>
 </div>
@@ -302,8 +302,8 @@
 <!-- 弹窗：问答 -->
 <div id="modal-quiz" class="modal-overlay">
     <div class="modal-box">
-        <div style="font-size:40px; margin-bottom:10px;">🍩</div>
-        <h3 style="margin:0 0 10px 0; color:#1565c0;">豹警官的提问</h3>
+        <div style="font-size:40px; margin-bottom:10px;">🎩</div>
+        <h3 style="margin:0 0 10px 0; color:#1565c0;">史高治叔叔的提问</h3>
         <div class="quiz-question" id="quiz-q">题目...</div>
         <div id="quiz-options"></div>
         <div id="quiz-feedback"></div>
@@ -315,7 +315,7 @@
 <div id="modal-info" class="modal-overlay">
     <div class="modal-box">
         <div id="info-icon" style="font-size:40px; margin-bottom:10px;">🎁</div>
-        <h3 id="info-title" style="color:#00695c">标题</h3>
+        <h3 id="info-title" style="color:#2e7d32">标题</h3>
         <p id="info-desc" style="font-size:14px; color:#555; margin:15px 0;">内容</p>
         <button class="btn-main" onclick="game.closeInfo()">确定</button>
     </div>
@@ -328,7 +328,7 @@
         <h2 id="end-title" style="margin:10px 0; color:#e65100;">游戏结束!</h2>
         <p id="end-reason" style="color:#555;">原因</p>
         <div style="margin-top:15px; display:flex; justify-content:space-between; background:#f1f8e9; padding:10px; border-radius:10px; font-weight:bold; color:#33691e;">
-            <span>🦊 <span id="end-p1-money">0</span></span><span>🐰 <span id="end-p2-money">0</span></span>
+            <span>🐭 <span id="end-p1-money">0</span></span><span>👸 <span id="end-p2-money">0</span></span>
         </div>
         <h3 id="winner-name" style="color:#2e7d32; margin-top:15px;"></h3>
         <button class="btn-main" onclick="location.reload()">🔄 再玩一次</button>
@@ -337,7 +337,7 @@
 
 <script>
 /** 
- * SoundFX - 音效控制
+ * SoundFX
  */
 const SoundFX = {
     ctx: null,
@@ -351,10 +351,9 @@ const SoundFX = {
         if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume();
         }
-        // 播放无声短音以激活 iOS 音频
-        this.playTone(440, 'sine', 0.01, 0.001);
+        this.playTone(440, 'sine', 0.01, 0.001); // unlock
     },
-    playTone: function(freq, type, duration, vol=0.1) {
+    playTone: function(freq, type, dur, vol=0.1) {
         if (!this.ctx) return;
         try {
             const osc = this.ctx.createOscillator();
@@ -362,17 +361,15 @@ const SoundFX = {
             osc.type = type;
             osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
             gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + dur);
             osc.connect(gain);
             gain.connect(this.ctx.destination);
             osc.start();
-            osc.stop(this.ctx.currentTime + duration);
+            osc.stop(this.ctx.currentTime + dur);
         } catch(e) {}
     },
     playRoll: function() { 
-        for(let i=0; i<6; i++) {
-            setTimeout(() => this.playTone(600 + Math.random()*200, 'square', 0.05, 0.05), i*60);
-        }
+        for(let i=0; i<6; i++) setTimeout(() => this.playTone(600 + Math.random()*200, 'square', 0.05, 0.05), i*60);
     },
     playStep: function() { this.playTone(300, 'sine', 0.1, 0.1); },
     playWin: function() { 
@@ -393,7 +390,7 @@ const game = {
     turn: 0,
     round: 1,
     isAnimating: false,
-    mode: 1, // 1:Target, 2:Rounds, 3:Survival
+    mode: 1, 
     target: 1000,
     maxRounds: 20,
     diceRot: {x:0, y:0},
@@ -402,11 +399,10 @@ const game = {
     p2MathMode: true,
 
     players: [
-        { id:0, name:"尼克", money:100, pos:0, color:"#e65100", icon:"🦊" },
-        { id:1, name:"朱迪", money:100, pos:0, color:"#1e88e5", icon:"🐰" }
+        { id:0, name:"米奇", money:100, pos:0, color:"#d50000", icon:"🐭" },
+        { id:1, name:"艾莎", money:100, pos:0, color:"#00b0ff", icon:"👸" }
     ],
 
-    // 32格路径映射 (6x6 - 4)
     pathMap: [
         {r:1,c:1,d:'→'},{r:1,c:2,d:'→'},{r:1,c:3,d:'→'},{r:1,c:4,d:'→'},{r:1,c:5,d:'→'},{r:1,c:6,d:'↓'},
         {r:2,c:6,d:'↓'},{r:3,c:6,d:'↓'},{r:4,c:6,d:'↓'},{r:5,c:6,d:'↓'},{r:6,c:6,d:'←'},
@@ -417,53 +413,48 @@ const game = {
     ],
 
     mapData: [
-        { name: "警局", type: "t-start", icon: "👮", info: "工资+20" },
-        { name: "爪爪冰棍", type: "t-city", icon: "🐾", industry: "零售", minP:0.65, maxP:0.80 },
-        { name: "动物城快线", type: "t-fun", icon: "🚅", info: "随机穿梭" },
-        { name: "大甜甜圈", type: "t-city", icon: "🍩", industry: "餐饮", minP:0.60, maxP:0.75 },
-        { name: "夏奇羊", type: "t-luck", icon: "🎤", info: "演唱会" },
-        { name: "午夜嚎叫", type: "t-trap", icon: "🌺", industry: "有毒", minP:0.10, maxP:0.35 }, 
-        
-        { name: "芬尼克", type: "t-fun", icon: "🚙", info: "随机" },
-        { name: "冰川镇", type: "t-city", icon: "🧊", industry: "冰块", minP:0.65, maxP:0.85 },
-        { name: "胡萝卜场", type: "t-city", icon: "🥕", industry: "农场", minP:0.60, maxP:0.85 },
-        { name: "大先生", type: "t-city", icon: "🐭", industry: "风投", minP:0.65, maxP:0.90 },
-        { name: "明日世界", type: "t-city", icon: "🚀", industry: "科技", minP:0.55, maxP:0.90 },
-        
-        { name: "雨林区", type: "t-city", icon: "🍃", industry: "旅游", minP:0.60, maxP:0.80 },
-        { name: "狮市长", type: "t-luck", icon: "🦁", info: "拨款" },
-        { name: "大象店", type: "t-city", icon: "🐘", industry: "冷饮", minP:0.60, maxP:0.85 },
-        { name: "警校特训", type: "t-school", icon: "🏫", info: "胜率UP" },
-        { name: "豹警官", type: "t-quiz", icon: "🍩", info: "答题" },
-        
-        { name: "撒哈拉", type: "t-city", icon: "🏜️", industry: "酒店", minP:0.55, maxP:0.75 },
-        { name: "露露小姐", type: "t-city", icon: "👗", industry: "时尚", minP:0.55, maxP:0.75 },
-        { name: "车管所", type: "t-bad", icon: "🦥", info: "交税10%" }, 
-        { name: "盗版碟", type: "t-city", icon: "💿", industry: "媒体", minP:0.65, maxP:0.80 },
-        
-        { name: "瑜伽俱乐部", type: "t-city", icon: "🧘", industry: "健康", minP:0.60, maxP:0.75 },
-        { name: "羊副市长", type: "t-fun", icon: "🐑", info: "礼物" },
-        { name: "小啮齿镇", type: "t-city", icon: "🏠", industry: "地产", minP:0.60, maxP:0.80 },
-        { name: "缆车", type: "t-city", icon: "🚠", industry: "交通", minP:0.60, maxP:0.75 },
-        
-        { name: "博物馆", type: "t-city", icon: "🏛️", industry: "文化", minP:0.60, maxP:0.80 },
-        { name: "热气球", type: "t-city", icon: "🎈", industry: "观光", minP:0.55, maxP:0.90 },
-        { name: "城市勋章", type: "t-super", icon: "🏅", info: "资产翻倍" }, 
-        { name: "朱迪爸妈", type: "t-luck", icon: "👪", info: "获得+15" },
-        { name: "蓝莓", type: "t-city", icon: "🫐", industry: "农业", minP:0.55, maxP:0.75 },
-        { name: "牛局长", type: "t-luck", icon: "🐃", info: "指引+10" },
-        { name: "录音笔", type: "t-city", icon: "🖊️", industry: "数码", minP:0.60, maxP:0.80 },
-        { name: "交通罚单", type: "t-city", icon: "📝", industry: "市政", minP:0.60, maxP:0.80 }
+        { name: "奇幻城堡", type: "t-start", icon: "🏰", info: "薪水+20" },
+        { name: "维尼蜂蜜", type: "t-city", icon: "🍯", industry: "食品", minP:0.65, maxP:0.80 },
+        { name: "魔法马车", type: "t-fun", icon: "🪄", info: "随机穿梭" },
+        { name: "闪电麦坤", type: "t-city", icon: "🏎️", industry: "赛车", minP:0.60, maxP:0.75 },
+        { name: "奇妙仙子", type: "t-luck", icon: "🧚‍♀️", info: "魔法加持" },
+        { name: "毒苹果", type: "t-trap", icon: "🍎", industry: "黑巫术", minP:0.10, maxP:0.35 }, 
+        { name: "瓦力", type: "t-fun", icon: "🤖", info: "随机事件" },
+        { name: "冰雪宫殿", type: "t-city", icon: "❄️", industry: "冰雕", minP:0.65, maxP:0.85 },
+        { name: "飞屋气球", type: "t-city", icon: "🎈", industry: "探险", minP:0.60, maxP:0.85 },
+        { name: "巴斯光年", type: "t-city", icon: "🚀", industry: "航天", minP:0.65, maxP:0.90 },
+        { name: "荣耀王国", type: "t-city", icon: "🦁", industry: "生态", minP:0.55, maxP:0.90 },
+        { name: "莫阿娜海岛", type: "t-city", icon: "🌺", industry: "航海", minP:0.60, maxP:0.80 },
+        { name: "神灯精灵", type: "t-luck", icon: "🧞‍♂️", info: "愿望" },
+        { name: "漫威英雄", type: "t-city", icon: "🛡️", industry: "安保", minP:0.60, maxP:0.85 },
+        { name: "胡迪警长", type: "t-school", icon: "🤠", info: "胜率UP" },
+        { name: "史高治", type: "t-quiz", icon: "👓", info: "答题" },
+        { name: "尼莫海洋", type: "t-city", icon: "🐠", industry: "水产", minP:0.55, maxP:0.75 },
+        { name: "梦幻岛", type: "t-city", icon: "🏝️", industry: "旅游", minP:0.55, maxP:0.75 },
+        { name: "乌苏拉", type: "t-bad", icon: "🐙", info: "契约-10%" }, 
+        { name: "蜘蛛侠快递", type: "t-city", icon: "🕸️", industry: "物流", minP:0.65, maxP:0.80 },
+        { name: "灰姑娘制衣", type: "t-city", icon: "👗", industry: "时尚", minP:0.60, maxP:0.75 },
+        { name: "米妮礼物", type: "t-fun", icon: "🎀", info: "惊喜" },
+        { name: "玩具总动员", type: "t-city", icon: "🧸", industry: "玩具", minP:0.60, maxP:0.80 },
+        { name: "加勒比海盗", type: "t-city", icon: "🚢", industry: "寻宝", minP:0.60, maxP:0.75 },
+        { name: "梅里达射箭", type: "t-city", icon: "🏹", industry: "运动", minP:0.60, maxP:0.80 },
+        { name: "睡美人城堡", type: "t-city", icon: "🧚", industry: "地产", minP:0.55, maxP:0.90 },
+        { name: "无限宝石", type: "t-super", icon: "💎", info: "资产翻倍" }, 
+        { name: "许愿星", type: "t-luck", icon: "✨", info: "获得+15" },
+        { name: "匹诺曹", type: "t-city", icon: "🤥", industry: "木偶", minP:0.55, maxP:0.75 },
+        { name: "人鱼公主", type: "t-luck", icon: "🐚", info: "指引+10" },
+        { name: "小飞象", type: "t-city", icon: "🐘", industry: "马戏", minP:0.60, maxP:0.80 },
+        { name: "贝儿书店", type: "t-city", icon: "🌹", industry: "图书", minP:0.60, maxP:0.80 }
     ],
 
     quizBank: [
-        { q: "尼克靠倒卖冰棍赚钱，这叫什么？", opts: ["赚差价(利润)", "做慈善", "浪费时间"], ans: 0 },
-        { q: "朱迪想当警察但大家让她种胡萝卜，这说明？", opts: ["别人总是对的", "要坚持梦想", "胡萝卜好吃"], ans: 1 },
-        { q: "如果闪电(树懒)帮你理财，缺点是？", opts: ["太快了", "效率太低(流动性差)", "很可爱"], ans: 1 },
-        { q: "午夜嚎叫花朵看起来漂亮但有毒，这像？", opts: ["高风险诈骗", "安全存款", "买糖果"], ans: 0 },
-        { q: "想在动物城买大房子，尼克应该？", opts: ["去偷", "存钱投资", "等天上掉馅饼"], ans: 1 },
-        { q: "把钱分给不同的动物做生意，这叫？", opts: ["分散风险", "乱花钱", "送礼物"], ans: 0 },
-        { q: "大先生虽然小但有钱，因为他懂得？", opts: ["积累资源人脉", "吃甜甜圈", "睡觉"], ans: 0 }
+        { q: "史高治叔叔喜欢在金库游泳，因为他懂得？", opts: ["积累本金", "浪费", "游泳"], ans: 0 },
+        { q: "如果阿拉丁把三个愿望都用来买飞毯，这叫？", opts: ["分散投资", "孤注一掷", "许愿"], ans: 1 },
+        { q: "灰姑娘变出来的马车午夜会消失，这像？", opts: ["长期资产", "短期泡沫", "工资"], ans: 1 },
+        { q: "大家都去买维尼的蜂蜜，价格会？", opts: ["变高", "变低", "不变"], ans: 0 },
+        { q: "想买城堡钱不够怎么办？", opts: ["抢过来", "存钱投资", "哭"], ans: 1 },
+        { q: "毒苹果虽然红但有毒，胜率极低，你买吗？", opts: ["全买", "不买", "买一点"], ans: 1 },
+        { q: "花木兰替父从军是责任，理财是为了？", opts: ["好玩", "生活更好", "变坏"], ans: 1 }
     ],
 
     // --- 方法 ---
@@ -478,10 +469,9 @@ const game = {
     },
 
     start: function() {
-        SoundFX.init(); // 尝试初始化音效
+        SoundFX.init();
         document.getElementById('modal-start').style.display = 'none';
         
-        // 读取配置
         if(this.mode===1) this.target = parseInt(document.getElementById('input-target').value) || 1000;
         if(this.mode===2) this.maxRounds = parseInt(document.getElementById('input-rounds').value) || 20;
 
@@ -490,20 +480,18 @@ const game = {
 
         this.initBoard();
         this.updateUI();
-        this.log("欢迎来到疯狂动物城！", "#00838f");
+        this.log("欢迎来到迪士尼奇幻世界！", "#8e24aa");
     },
 
     initBoard: function() {
         const board = document.getElementById('board');
         board.innerHTML = '';
         
-        // 中间仪表盘
         const center = document.createElement('div');
         center.className = 'center-area';
-        center.innerHTML = `<div id="center-icon" class="center-icon">🏙️</div><div id="center-title" style="font-weight:bold;color:#006064;font-size:16px;">动物城快讯</div><div id="center-desc" style="font-size:12px;color:#00838f;">尝试一切！</div>`;
+        center.innerHTML = `<div id="center-icon" class="center-icon">🏰</div><div id="center-title" style="font-weight:bold;color:#4a148c;font-size:16px;">奇幻世界</div><div id="center-desc" style="font-size:12px;color:#7b1fa2;">请开始游戏</div>`;
         board.appendChild(center);
 
-        // 格子
         this.mapData.forEach((d, i) => {
             let div = document.createElement('div');
             div.className = `cell ${d.type}`;
@@ -514,7 +502,6 @@ const game = {
             board.appendChild(div);
         });
 
-        // 棋子
         this.players.forEach(p => {
             let el = document.createElement('div');
             el.className = 'token-container';
@@ -523,7 +510,6 @@ const game = {
             p.el = el;
         });
 
-        // 初始位置
         setTimeout(() => {
             this.placePlayer(this.players[0], 0);
             this.placePlayer(this.players[1], 0);
@@ -553,17 +539,14 @@ const game = {
         p.el.style.top = (cy - 40) + 'px';
     },
 
-    // --- 游戏流程 ---
     rollDice: function() {
         if(this.isAnimating) return;
         this.isAnimating = true;
         document.getElementById('roll-btn').disabled = true;
         
-        // 骰子动画
         const val = Math.floor(Math.random()*6)+1;
         const faces = [{x:0,y:0}, {x:0,y:-90}, {x:-90,y:0}, {x:90,y:0}, {x:0,y:90}, {x:0,y:180}];
         
-        // 旋转
         let nextX = this.diceRot.x + 360*2 + faces[val-1].x - (this.diceRot.x%360);
         let nextY = this.diceRot.y + 360*2 + faces[val-1].y - (this.diceRot.y%360);
         this.diceRot = {x:nextX, y:nextY};
@@ -585,10 +568,9 @@ const game = {
             let next = (p.pos + 1) % this.mapData.length;
             SoundFX.playStep();
             
-            // 经过起点
             if(next === 0 && p.pos === this.mapData.length - 1) {
                 p.money += 20;
-                this.log(`👮 经过警局，获得工资+20`, '#009688');
+                this.log(`🏰 经过城堡，获得薪水+20`, '#8e24aa');
                 this.updateUI();
             }
 
@@ -610,31 +592,30 @@ const game = {
 
         if(d.type === 't-city' || d.type === 't-trap') {
             this.openTradeModal(d, p);
-        } else if(d.name === "豹警官") {
+        } else if(d.name === "史高治") {
             this.openQuiz(p);
-        } else if(d.name === "动物城快线") {
+        } else if(d.name === "魔法马车") {
             this.showCatbusChoice(p);
-        } else if(d.name === "夏奇羊" || d.name === "狮市长" || d.name === "朱迪爸妈" || d.name === "牛局长") {
+        } else if(d.name === "奇妙仙子" || d.name === "神灯精灵" || d.name === "许愿星" || d.name === "人鱼公主") {
             SoundFX.playWin();
-            this.triggerMath(p, 10, ()=> { this.log("✨ 好运降临 +10", "#e65100"); this.updateUI(); this.nextTurn(); });
+            this.triggerMath(p, 10, ()=> { this.log("✨ 好运降临 +10", "#e91e63"); this.updateUI(); this.nextTurn(); });
         } else if(d.type === 't-fun') {
             let amt = Math.random()>0.5 ? 15 : -10;
             this.triggerMath(p, amt, ()=> { this.log(amt>0?"🎁 意外惊喜":"💨 失去一点金币", "#555"); this.updateUI(); this.nextTurn(); });
-        } else if(d.name === "车管所") { 
+        } else if(d.name === "乌苏拉") { 
             let loss = -Math.round(p.money * 0.1);
-            this.triggerMath(p, loss, ()=> { this.log("🦥 缴纳罚款", "red"); this.updateUI(); this.nextTurn(); });
+            this.triggerMath(p, loss, ()=> { this.log("🐙 被乌苏拉收走了金币", "red"); this.updateUI(); this.nextTurn(); });
         } else if(d.type === 't-school') {
-            this.triggerMath(p, -5, ()=> { p.buff = 0.15; this.log("🏫 警校学习，胜率提升", "blue"); this.updateUI(); this.nextTurn(); });
+            this.triggerMath(p, -5, ()=> { p.buff = 0.15; this.log("🤠 学习技能，胜率提升", "blue"); this.updateUI(); this.nextTurn(); });
         } else if(d.type === 't-super') {
             let bonus = p.money; // Double
             SoundFX.playWin();
-            this.triggerMath(p, bonus, ()=> { this.log("💎 获得城市勋章，资产翻倍！", "#8e24aa"); this.updateUI(); this.nextTurn(); });
+            this.triggerMath(p, bonus, ()=> { this.log("💎 获得无限宝石，资产翻倍！", "#8e24aa"); this.updateUI(); this.nextTurn(); });
         } else {
             this.nextTurn();
         }
     },
 
-    // --- 猫巴士逻辑 ---
     showCatbusChoice: function(p) {
         let choices = [];
         while(choices.length < 3) {
@@ -660,7 +641,6 @@ const game = {
         document.getElementById('modal-catbus').style.display = 'flex';
     },
 
-    // --- 智能算术逻辑 ---
     triggerMath: function(player, amount, callback) {
         if(amount === 0) { callback(); return; } 
         let changeVal = Math.round(amount);
@@ -673,7 +653,7 @@ const game = {
             player.money += changeVal;
             this.updateUI();
             let sign = changeVal > 0 ? "+" : "";
-            this.log(`(自动) ${player.name} 资金 ${sign}${changeVal}`, player.id===0?"#e65100":"#1e88e5");
+            this.log(`(自动) ${player.name} 资金 ${sign}${changeVal}`, player.id===0?"#d50000":"#00b0ff");
             setTimeout(callback, 800);
             return;
         }
@@ -699,7 +679,6 @@ const game = {
         }
     },
 
-    // --- 交易 ---
     openTradeModal: function(data, p) {
         this.currentTrade = { p: p, baseP: (Math.random()*(data.maxP-data.minP)+data.minP) };
         let finalP = this.currentTrade.baseP + (p.buff||0); if(finalP>0.95) finalP=0.95;
@@ -794,7 +773,7 @@ const game = {
         this.isAnimating = false;
         document.getElementById('roll-btn').disabled = false;
         this.updateUI();
-        this.log(`👉 轮到 ${this.players[this.turn].name}`, this.turn===0?"#e65100":"#1e88e5");
+        this.log(`👉 轮到 ${this.players[this.turn].name}`, this.turn===0?"#d50000":"#00b0ff");
     },
 
     endGame: function(reason) {
@@ -802,7 +781,7 @@ const game = {
         document.getElementById('end-reason').innerText = reason;
         document.getElementById('end-p1-money').innerText=this.players[0].money;
         document.getElementById('end-p2-money').innerText=this.players[1].money;
-        let win = this.players[0].money > this.players[1].money ? "🦊 尼克" : "🐰 朱迪";
+        let win = this.players[0].money > this.players[1].money ? "🐭 米奇" : "👸 艾莎";
         document.getElementById('winner-name').innerText = "🎉 " + win + " 获胜!";
     },
 
