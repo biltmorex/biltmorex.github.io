@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooper最优杠杆 (中美全市场版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        
+        h1 { text-align: center; color: #2c3e50; margin: 0 0 5px 0; }
+        .subtitle { text-align: center; color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+
+        .control-panel { background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 25px; }
+
+        /* 输入行 */
+        .top-row { display: flex; gap: 20px; justify-content: center; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .input-group { display: flex; align-items: center; gap: 8px; }
+        label { font-weight: bold; font-size: 14px; color: #555; }
+        input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center; }
+        #symbol { width: 140px; text-transform: uppercase; } /* 加宽以适应 A股代码 */
+        #daysInput { width: 80px; }
+
+        /* 周期快捷键 */
+        .period-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); 
+            gap: 10px; 
+            margin-bottom: 20px; 
+            padding-bottom: 20px;
+            border-bottom: 1px dashed #ddd;
+        }
+        
+        .period-btn {
+            padding: 8px 0; font-size: 13px; background: #fff; border: 1px solid #dcdfe6; border-radius: 4px; color: #606266; cursor: pointer; transition: 0.2s;
+        }
+        .period-btn:hover { border-color: #409eff; color: #409eff; }
+        .period-btn.active { background: #ecf5ff; border-color: #409eff; color: #409eff; font-weight: bold; }
+
+        /* 按钮行 */
+        .action-row { display: flex; justify-content: center; gap: 15px; }
+        .main-btn {
+            padding: 10px 30px; font-size: 15px; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .btn-sina { background: #d81e06; }
+        .btn-sina:hover { background: #b01805; }
+        .btn-qq { background: #1296db; }
+        .btn-qq:hover { background: #0e78af; }
+
+        #statusMsg { text-align: center; font-size: 13px; color: #666; height: 20px; margin-bottom: 10px; }
+
+        /* 结果展示 */
+        .stats-grid { display: none; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ebeef5; border-top-width: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .card-label { font-size: 13px; color: #909399; margin-bottom: 5px; }
+        .card-val { font-size: 26px; font-weight: bold; color: #303133; }
+        .card-sub { font-size: 12px; color: #c0c4cc; margin-top: 5px; }
+
+        .c-mu { border-top-color: #f56c6c; }
+        .c-sig { border-top-color: #409eff; }
+        .c-k { border-top-color: #e6a23c; background: #fdf6ec; }
+        .val-k { color: #d35400; }
+
+        .chart-area { height: 400px; display: none; }
+        
+        .paper-note { margin-top: 30px; font-size: 12px; color: #999; text-align: center; background: #fafafa; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>最优杠杆计算器 (中美全市场版)</h1>
+    <div class="subtitle">严格复现 Cooper 论文公式：k = μ / σ²</div>
+
+    <div class="control-panel">
+        <div class="top-row">
+            <div class="input-group">
+                <label>标的代码:</label>
+                <input type="text" id="symbol" value="600519" placeholder="SPY 或 600519">
+            </div>
+            <div class="input-group">
+                <label>计算天数:</label>
+                <input type="number" id="daysInput" value="252">
+            </div>
+        </div>
+
+        <div class="period-grid">
+            <button class="period-btn" onclick="setDays(10, this)">10天 (短线)</button>
+            <button class="period-btn" onclick="setDays(30, this)">30天 (月线)</button>
+            <button class="period-btn" onclick="setDays(126, this)">半年</button>
+            <button class="period-btn active" onclick="setDays(252, this)">1 年</button>
+            <button class="period-btn" onclick="setDays(756, this)">3 年</button>
+            <button class="period-btn" onclick="setDays(1260, this)">5 年</button>
+            <button class="period-btn" onclick="setDays(2520, this)">10 年</button>
+            <button class="period-btn" onclick="setDays(5040, this)">20 年</button>
+        </div>
+
+        <div class="action-row">
+            <button class="main-btn btn-sina" onclick="initCalc('SINA')">新浪数据 (首选)</button>
+            <button class="main-btn btn-qq" onclick="initCalc('TENCENT')">腾讯数据</button>
+        </div>
+    </div>
+
+    <div id="statusMsg">请输入代码 (支持美股 SPY, AAPL 或 A股 600519, 000001)</div>
+
+    <div id="resultArea" class="stats-grid">
+        <div class="card c-mu">
+            <div class="card-label">年化收益率 (μ)</div>
+            <div class="card-val" id="valMu">--</div>
+            <div class="card-sub">Daily Mean Log Return × 252</div>
+        </div>
+        <div class="card c-sig">
+            <div class="card-label">年化波动率 (σ)</div>
+            <div class="card-val" id="valSigma">--</div>
+            <div class="card-sub">Daily Std Dev × √252</div>
+        </div>
+        <div class="card c-k">
+            <div class="card-label">最优杠杆 (k)</div>
+            <div class="card-val val-k" id="valK">--</div>
+            <div class="card-sub">Strict Formula: μ / σ²</div>
+        </div>
+    </div>
+
+    <div id="chartContainer" class="chart-area">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="paper-note">
+        <strong>支持说明：</strong><br>
+        1. <strong>美股：</strong> 直接输入代码 (如 SPY, NVDA)。<br>
+        2. <strong>A股：</strong> 输入6位数字代码 (如 600519, 000300)，程序会自动识别沪(sh)/深(sz)前缀。
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    function setDays(days, btn) {
+        document.getElementById('daysInput').value = days;
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    // 智能识别市场代码
+    function parseSymbol(input) {
+        let code = input.trim();
+        // 如果是6位数字，默认为A股
+        if (/^\d{6}$/.test(code)) {
+            // 简单规则：6开头是沪市sh，0或3开头是深市sz (简单覆盖主要A股)
+            // 腾讯/新浪都需要 sh/sz 前缀
+            if (code.startsWith('6')) return { market: 'CN', code: 'sh' + code, label: 'A股 ' + code };
+            if (code.startsWith('0') || code.startsWith('3')) return { market: 'CN', code: 'sz' + code, label: 'A股 ' + code };
+            // 北交所暂略，默认 sz
+            return { market: 'CN', code: 'sz' + code, label: 'A股 ' + code };
+        }
+        // 如果已经带了 sh/sz 前缀
+        if (/^(sh|sz)\d{6}$/i.test(code)) {
+            return { market: 'CN', code: code.toLowerCase(), label: 'A股 ' + code };
+        }
+        // 否则默认为美股 (全大写)
+        return { market: 'US', code: code.toUpperCase(), label: '美股 ' + code.toUpperCase() };
+    }
+
+    function initCalc(source) {
+        const rawSymbol = document.getElementById('symbol').value;
+        const days = parseInt(document.getElementById('daysInput').value);
+        const status = document.getElementById('statusMsg');
+
+        if (!rawSymbol) return alert("请输入代码");
+        if (isNaN(days) || days < 10) return alert("天数太少");
+
+        const target = parseSymbol(rawSymbol);
+
+        // UI Reset
+        status.innerText = `[${target.market}] 正在通过 ${source} 获取 ${target.label} 过去 ${days} 天数据...`;
+        status.style.color = source === 'SINA' ? '#d81e06' : '#1296db';
+        document.getElementById('resultArea').style.display = 'none';
+        document.getElementById('chartContainer').style.display = 'none';
+
+        if (source === 'SINA') {
+            if (target.market === 'CN') loadSinaCN(target.code, days);
+            else loadSinaUS(target.code, days);
+        } else {
+            // 腾讯接口逻辑比较统一
+            loadTencent(target, days);
+        }
+    }
+
+    // --- 新浪 A股 接口 ---
+    function loadSinaCN(symbol, days) {
+        const varName = `sina_cn_${Date.now()}`;
+        // 新浪A股接口与美股不同，需要 scale=240 (日线), datalen=天数
+        const url = `https://money.finance.sina.com.cn/quotes_service/api/jsonp_v2.php/window.${varName}=/CN_MarketData.getKLineData?symbol=${symbol}&scale=240&ma=no&datalen=${days}`;
+
+        jsonpRequest(url, varName, (data) => {
+            if (data && Array.isArray(data) && data.length > 0) {
+                // A股接口返回: {day: "2023-01-01", open:.., close:..}
+                let dates = [], prices = [];
+                data.forEach(item => {
+                    dates.push(item.day);
+                    prices.push(parseFloat(item.close));
+                });
+                calculateStrict(dates, prices);
+            } else {
+                showError("新浪A股无数据，请检查代码 (如 600519)");
+            }
+        });
+    }
+
+    // --- 新浪 美股 接口 ---
+    function loadSinaUS(symbol, days) {
+        const varName = `sina_us_${Date.now()}`;
+        const url = `https://stock.finance.sina.com.cn/usstock/api/jsonp_v2.php/window.${varName}=/US_MinKService.getDailyK?symbol=${symbol}&___=${Math.random()}`;
+
+        jsonpRequest(url, varName, (data) => {
+            if (data && Array.isArray(data) && data.length > 0) {
+                data.sort((a, b) => new Date(a.d) - new Date(b.d));
+                const sliced = data.length > days ? data.slice(-days) : data;
+                
+                let dates = [], prices = [];
+                sliced.forEach(item => {
+                    dates.push(item.d);
+                    prices.push(parseFloat(item.c));
+                });
+                calculateStrict(dates, prices);
+            } else {
+                showError("新浪美股无数据，请检查代码 (如 SPY)");
+            }
+        });
+    }
+
+    // --- 腾讯 统一接口 (支持A股和美股) ---
+    function loadTencent(target, days) {
+        const varName = `qq_${Date.now()}`;
+        let qqCode = target.code;
+        
+        // 腾讯规则：美股加 us 前缀，A股直接用 shxxxxxx/szxxxxxx
+        if (target.market === 'US') {
+            qqCode = 'us' + target.code;
+        }
+
+        const limit = days + 20; 
+        const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=${varName}&param=${qqCode},day,,,${limit},qfq`;
+
+        jsonpRequest(url, varName, (res) => {
+            if (res && res.data && res.data[qqCode]) {
+                const kline = res.data[qqCode].qfqday || res.data[qqCode].day;
+                if (!kline) { showError("数据不足"); return; }
+                
+                const sliced = kline.length > days ? kline.slice(-days) : kline;
+                
+                let dates = [], prices = [];
+                sliced.forEach(item => {
+                    let d = item[0];
+                    // 格式化日期 YYYY-MM-DD
+                    let dateStr = d.length === 8 ? `${d.substring(0,4)}-${d.substring(4,6)}-${d.substring(6,8)}` : d;
+                    dates.push(dateStr);
+                    prices.push(parseFloat(item[2]));
+                });
+                calculateStrict(dates, prices);
+            } else {
+                showError("腾讯无数据，请检查代码");
+            }
+        });
+    }
+
+    // --- 通用 JSONP 封装 ---
+    function jsonpRequest(url, varName, callback) {
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = () => {
+            if (window[varName]) {
+                callback(window[varName]);
+                delete window[varName];
+            } else {
+                callback(null);
+            }
+            document.body.removeChild(script);
+        };
+        script.onerror = () => { 
+            showError("网络请求失败"); 
+            document.body.removeChild(script); 
+        };
+        document.body.appendChild(script);
+    }
+
+    // --- 严格数学计算 (Cooper) ---
+    function calculateStrict(dates, prices) {
+        document.getElementById('statusMsg').innerText = `获取成功 (${prices.length}天)，正在计算...`;
+
+        // 1. 对数收益率
+        let logReturns = [];
+        for (let i = 1; i < prices.length; i++) {
+            let r = Math.log(prices[i] / prices[i-1]);
+            logReturns.push(r);
+        }
+
+        const n = logReturns.length;
+        if (n < 2) { showError("数据点不足以计算方差"); return; }
+
+        // 2. 统计特征
+        const sumR = logReturns.reduce((a, b) => a + b, 0);
+        const mu_daily = sumR / n;
+
+        const sumSqDiff = logReturns.reduce((sum, r) => sum + Math.pow(r - mu_daily, 2), 0);
+        const var_daily = sumSqDiff / (n - 1);
+        const sigma_daily = Math.sqrt(var_daily);
+
+        // 3. 计算 k (Strict)
+        let k = mu_daily / var_daily;
+
+        // 4. 年化展示
+        const mu_annual = mu_daily * 252;
+        const sigma_annual = sigma_daily * Math.sqrt(252);
+
+        // UI 更新
+        const elMu = document.getElementById('valMu');
+        elMu.innerText = (mu_annual * 100).toFixed(2) + "%";
+        // 统一使用红涨绿跌 (中国习惯)
+        elMu.style.color = mu_annual >= 0 ? '#f56c6c' : '#67c23a';
+
+        document.getElementById('valSigma').innerText = (sigma_annual * 100).toFixed(2) + "%";
+
+        const elK = document.getElementById('valK');
+        elK.innerText = k.toFixed(2) + " x";
+        
+        if (k <= 0) elK.style.color = '#67c23a'; // 绿
+        else if (k > 5) elK.style.color = '#e6a23c'; // 橙
+        else elK.style.color = '#d35400'; // 红/深橙
+
+        document.getElementById('resultArea').style.display = 'grid';
+        document.getElementById('chartContainer').style.display = 'block';
+
+        drawChart(dates, prices);
+    }
+
+    function drawChart(dates, prices) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: '股价走势',
+                    data: prices,
+                    borderColor: '#409eff',
+                    backgroundColor: 'rgba(64, 158, 255, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                scales: { x: { ticks: { maxTicksLimit: 10 } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('statusMsg');
+        el.innerText = "❌ " + msg;
+        el.style.color = "red";
+    }
+</script>
+
+</body>
+</html>
