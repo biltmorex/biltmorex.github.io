@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooper最优杠杆 (全能复权版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        
+        h1 { text-align: center; color: #e65100; margin: 0 0 5px 0; }
+        .subtitle { text-align: center; color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+
+        .control-panel { background: #fff8e1; padding: 20px; border-radius: 8px; border: 1px solid #ffe0b2; margin-bottom: 25px; }
+
+        .top-row { display: flex; gap: 20px; justify-content: center; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .input-group { display: flex; align-items: center; gap: 8px; }
+        label { font-weight: bold; font-size: 14px; color: #e65100; }
+        input { padding: 8px 12px; border: 1px solid #ffcc80; border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center; }
+        #symbol { width: 150px; text-transform: uppercase; } 
+        #daysInput { width: 80px; }
+
+        .period-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; 
+            margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px dashed #ffcc80;
+        }
+        
+        .period-btn {
+            padding: 8px 0; font-size: 13px; background: #fff; border: 1px solid #ffcc80; border-radius: 4px; color: #e65100; cursor: pointer; transition: 0.2s;
+        }
+        .period-btn:hover { background: #fff3e0; }
+        .period-btn.active { background: #ef6c00; border-color: #ef6c00; color: #fff; font-weight: bold; }
+
+        .action-row { display: flex; justify-content: center; gap: 15px; }
+        .main-btn {
+            padding: 12px 50px; font-size: 16px; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;
+            display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+            background: #ef6c00; box-shadow: 0 4px 10px rgba(239, 108, 0, 0.3);
+        }
+        .main-btn:hover { background: #e65100; }
+        .main-btn span { font-size: 11px; font-weight: normal; opacity: 0.9; margin-top: 2px; }
+
+        #statusMsg { text-align: center; font-size: 13px; color: #666; height: 20px; margin-bottom: 10px; }
+
+        .stats-grid { display: none; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ebeef5; border-top-width: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .card-label { font-size: 13px; color: #909399; margin-bottom: 5px; }
+        .card-val { font-size: 26px; font-weight: bold; color: #303133; }
+        .card-sub { font-size: 12px; color: #c0c4cc; margin-top: 5px; }
+
+        .c-mu { border-top-color: #f56c6c; }
+        .c-sig { border-top-color: #409eff; }
+        .c-k { border-top-color: #ef6c00; background: #fff3e0; }
+        .val-k { color: #e65100; }
+
+        .chart-area { height: 400px; display: none; }
+        .paper-note { margin-top: 30px; font-size: 12px; color: #999; text-align: center; background: #fafafa; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>最优杠杆计算器 (全能复权版)</h1>
+    <div class="subtitle">统一使用东方财富后复权数据 | 解决 TSLA 拆股 / A股分红问题</div>
+
+    <div class="control-panel">
+        <div class="top-row">
+            <div class="input-group">
+                <label>代码:</label>
+                <input type="text" id="symbol" value="TSLA" placeholder="TSLA, 600519">
+            </div>
+            <div class="input-group">
+                <label>天数:</label>
+                <input type="number" id="daysInput" value="5040">
+            </div>
+        </div>
+
+        <div class="period-grid">
+            <button class="period-btn" onclick="setDays(10, this)">10天</button>
+            <button class="period-btn" onclick="setDays(30, this)">30天</button>
+            <button class="period-btn" onclick="setDays(126, this)">半年</button>
+            <button class="period-btn" onclick="setDays(252, this)">1 年</button>
+            <button class="period-btn" onclick="setDays(756, this)">3 年</button>
+            <button class="period-btn" onclick="setDays(1260, this)">5 年</button>
+            <button class="period-btn" onclick="setDays(2520, this)">10 年</button>
+            <button class="period-btn active" onclick="setDays(5040, this)">20 年</button>
+        </div>
+
+        <div class="action-row">
+            <button class="main-btn" onclick="startEngine()">
+                开始计算
+                <span>自动扫描美股/A股复权数据</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="statusMsg">准备就绪</div>
+
+    <div id="resultArea" class="stats-grid">
+        <div class="card c-mu">
+            <div class="card-label">年化收益率 (μ)</div>
+            <div class="card-val" id="valMu">--</div>
+            <div class="card-sub">Annualized Log Return</div>
+        </div>
+        <div class="card c-sig">
+            <div class="card-label">年化波动率 (σ)</div>
+            <div class="card-val" id="valSigma">--</div>
+            <div class="card-sub">Std Dev (Split-Adjusted)</div>
+        </div>
+        <div class="card c-k">
+            <div class="card-label">最优杠杆 (k)</div>
+            <div class="card-val val-k" id="valK">--</div>
+            <div class="card-sub">Cooper Formula: μ / σ²</div>
+        </div>
+    </div>
+
+    <div id="chartContainer" class="chart-area">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="paper-note">
+        <strong>复权修正说明：</strong><br>
+        1. <strong>TSLA 拆股修正</strong>：本版本弃用新浪美股接口（因其不复权），改用 <strong>东方财富后复权 (fqt=2)</strong> 接口。程序会自动扫描纳斯达克(105)和纽交所(106)等市场，确保获取到平滑的 K 线。<br>
+        2. <strong>600519 负数修正</strong>：A股同样使用后复权，防止高分红股票历史价格出现负数。
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    function setDays(days, btn) {
+        document.getElementById('daysInput').value = days;
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    // --- 主逻辑：统一走东方财富 ---
+    function startEngine() {
+        const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+        const days = parseInt(document.getElementById('daysInput').value);
+        
+        if (!symbol) return alert("请输入代码");
+        
+        const status = document.getElementById('statusMsg');
+        document.getElementById('resultArea').style.display = 'none';
+        document.getElementById('chartContainer').style.display = 'none';
+
+        // 1. A股 (纯数字)
+        if (/^\d{5,6}$/.test(symbol)) {
+            status.innerText = "识别为 A股/ETF，扫描沪深市场...";
+            status.style.color = "#ef6c00";
+            
+            // 尝试沪(1)和深(0)
+            const candidates = [`1.${symbol}`, `0.${symbol}`];
+            // 根据首字母优化顺序
+            if (['0', '3', '1'].includes(symbol[0])) candidates.reverse(); // 深市优先
+            
+            scanEastMoney(candidates, 0, days, symbol);
+        } 
+        // 2. 美股 (字母)
+        else {
+            status.innerText = "识别为 美股，扫描纳斯达克/纽交所...";
+            status.style.color = "#ef6c00"; 
+            
+            // 美股在东财的ID: 105(Nasdaq), 106(NYSE), 107(AMEX)
+            const candidates = [`105.${symbol}`, `106.${symbol}`, `107.${symbol}`];
+            scanEastMoney(candidates, 0, days, symbol);
+        }
+    }
+
+    // --- 递归扫描东方财富接口 ---
+    function scanEastMoney(candidates, index, days, displayCode) {
+        if (index >= candidates.length) {
+            showError("未找到数据。请检查代码是否正确 (如 TSLA, 600519)");
+            return;
+        }
+
+        const secId = candidates[index];
+        const status = document.getElementById('statusMsg');
+        status.innerText = `尝试连接: ${secId} (后复权)...`;
+
+        const cbName = `em_${Date.now()}_${index}`;
+        const limit = days + 20; 
+        // 关键参数: fqt=2 (后复权), klt=101 (日线)
+        const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?cb=${cbName}&secid=${secId}&ut=fa5fd1943c7b386f172d6893dbfba10b&fields1=f1&fields2=f51,f53&klt=101&fqt=2&end=20500101&lmt=${limit}`;
+
+        const script = document.createElement('script');
+        script.src = url;
+        
+        window[cbName] = function(res) {
+            delete window[cbName];
+            document.body.removeChild(script);
+
+            // 检查返回数据是否有效
+            if (res && res.data && res.data.klines && res.data.klines.length > 5) {
+                // 成功找到！
+                processData(res.data.klines, days);
+            } else {
+                // 失败，尝试下一个候选ID
+                scanEastMoney(candidates, index + 1, days, displayCode);
+            }
+        };
+        
+        script.onerror = () => {
+            document.body.removeChild(script);
+            scanEastMoney(candidates, index + 1, days, displayCode);
+        };
+        document.body.appendChild(script);
+    }
+
+    // --- 数据处理与计算 ---
+    function processData(klines, days) {
+        let dates = [];
+        let prices = [];
+        
+        // 解析数据: "2023-01-01,10.5"
+        klines.forEach(str => {
+            let parts = str.split(',');
+            let d = parts[0];
+            let p = parseFloat(parts[1]);
+            
+            // 后复权数据理论上>0，但为了数学安全再次过滤
+            if (!isNaN(p) && p > 0) {
+                dates.push(d);
+                prices.push(p);
+            }
+        });
+
+        // 截取所需长度
+        if (prices.length > days) {
+            prices = prices.slice(-days);
+            dates = dates.slice(-days);
+        }
+
+        calculateStrict(dates, prices);
+    }
+
+    // --- 严格计算 (Cooper Formula) ---
+    function calculateStrict(dates, prices) {
+        if (prices.length < 5) { showError("有效数据过少"); return; }
+        document.getElementById('statusMsg').innerText = `获取成功 (${prices.length}天)，计算中...`;
+
+        let logReturns = [];
+        for (let i = 1; i < prices.length; i++) {
+            let val = prices[i] / prices[i-1];
+            logReturns.push(Math.log(val));
+        }
+
+        const n = logReturns.length;
+        if (n === 0) { showError("数据异常"); return; }
+
+        const sumR = logReturns.reduce((a, b) => a + b, 0);
+        const mu_daily = sumR / n;
+
+        const sumSqDiff = logReturns.reduce((sum, r) => sum + Math.pow(r - mu_daily, 2), 0);
+        const var_daily = sumSqDiff / (n - 1);
+        const sigma_daily = Math.sqrt(var_daily);
+
+        // Cooper Formula: k = mu / var
+        let k = mu_daily / var_daily;
+
+        // Annualized
+        const mu_annual = mu_daily * 252;
+        const sigma_annual = sigma_daily * Math.sqrt(252);
+
+        // UI
+        const elMu = document.getElementById('valMu');
+        elMu.innerText = (mu_annual * 100).toFixed(2) + "%";
+        elMu.style.color = mu_annual >= 0 ? '#f56c6c' : '#67c23a';
+
+        document.getElementById('valSigma').innerText = (sigma_annual * 100).toFixed(2) + "%";
+
+        const elK = document.getElementById('valK');
+        elK.innerText = k.toFixed(2) + " x";
+        
+        if (isNaN(k)) {
+            elK.innerText = "Error";
+            elK.style.color = "#999";
+        } else if (k <= 0) {
+            elK.style.color = '#67c23a';
+        } else if (k > 5) {
+            elK.style.color = '#e6a23c';
+        } else {
+            elK.style.color = '#e65100';
+        }
+
+        document.getElementById('resultArea').style.display = 'grid';
+        document.getElementById('chartContainer').style.display = 'block';
+        document.getElementById('statusMsg').innerText = "计算完成";
+
+        drawChart(dates, prices);
+    }
+
+    function drawChart(dates, prices) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: '后复权股价 (Back Adj)',
+                    data: prices,
+                    borderColor: '#e65100',
+                    backgroundColor: 'rgba(230, 81, 0, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                scales: { x: { ticks: { maxTicksLimit: 10 } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('statusMsg');
+        el.innerText = "❌ " + msg;
+        el.style.color = "red";
+    }
+</script>
+
+</body>
+</html>
