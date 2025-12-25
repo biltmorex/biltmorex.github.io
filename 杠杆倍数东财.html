@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooper最优杠杆 (东财DJI修正版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        
+        h1 { text-align: center; color: #e65100; margin: 0 0 5px 0; }
+        .subtitle { text-align: center; color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+
+        .control-panel { background: #fff3e0; padding: 20px; border-radius: 8px; border: 1px solid #ffe0b2; margin-bottom: 25px; }
+
+        .top-row { display: flex; gap: 20px; justify-content: center; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .input-group { display: flex; align-items: center; gap: 8px; }
+        label { font-weight: bold; font-size: 14px; color: #e65100; }
+        input { padding: 8px 12px; border: 1px solid #ffcc80; border-radius: 4px; font-size: 16px; font-weight: bold; text-align: center; }
+        #symbol { width: 150px; text-transform: uppercase; } 
+        #daysInput { width: 80px; }
+
+        .period-grid { 
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; 
+            margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px dashed #ffcc80;
+        }
+        
+        .period-btn {
+            padding: 8px 0; font-size: 13px; background: #fff; border: 1px solid #ffcc80; border-radius: 4px; color: #e65100; cursor: pointer; transition: 0.2s;
+        }
+        .period-btn:hover { background: #ffe0b2; }
+        .period-btn.active { background: #ef6c00; border-color: #ef6c00; color: #fff; font-weight: bold; }
+
+        .action-row { display: flex; justify-content: center; gap: 15px; }
+        .main-btn {
+            padding: 10px 40px; font-size: 16px; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s;
+            display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+            background: #ef6c00; box-shadow: 0 4px 10px rgba(239, 108, 0, 0.3);
+        }
+        .main-btn:hover { background: #e65100; }
+        .main-btn span { font-size: 11px; font-weight: normal; opacity: 0.9; margin-top: 2px; }
+
+        #statusMsg { text-align: center; font-size: 13px; color: #666; height: 20px; margin-bottom: 10px; }
+
+        .stats-grid { display: none; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #ebeef5; border-top-width: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .card-label { font-size: 13px; color: #909399; margin-bottom: 5px; }
+        .card-val { font-size: 26px; font-weight: bold; color: #303133; }
+        .card-sub { font-size: 12px; color: #c0c4cc; margin-top: 5px; }
+
+        .c-mu { border-top-color: #f56c6c; }
+        .c-sig { border-top-color: #409eff; }
+        .c-k { border-top-color: #e6a23c; background: #fdf6ec; }
+        .val-k { color: #d35400; }
+
+        .chart-area { height: 400px; display: none; }
+        .paper-note { margin-top: 30px; font-size: 12px; color: #999; text-align: center; background: #fafafa; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>最优杠杆计算器 (东财DJI修正版)</h1>
+    <div class="subtitle">纯东方财富数据源 | 已修复 DJI 调用</div>
+
+    <div class="control-panel">
+        <div class="top-row">
+            <div class="input-group">
+                <label>代码:</label>
+                <input type="text" id="symbol" value="DJI" placeholder="如 DJI, IXIC, SPX">
+            </div>
+            <div class="input-group">
+                <label>天数:</label>
+                <input type="number" id="daysInput" value="5040">
+            </div>
+        </div>
+
+        <div class="period-grid">
+            <button class="period-btn" onclick="setDays(10, this)">10天</button>
+            <button class="period-btn" onclick="setDays(30, this)">30天</button>
+            <button class="period-btn" onclick="setDays(126, this)">半年</button>
+            <button class="period-btn" onclick="setDays(252, this)">1 年</button>
+            <button class="period-btn" onclick="setDays(756, this)">3 年</button>
+            <button class="period-btn" onclick="setDays(1260, this)">5 年</button>
+            <button class="period-btn" onclick="setDays(2520, this)">10 年</button>
+            <button class="period-btn active" onclick="setDays(5040, this)">20 年</button>
+        </div>
+
+        <div class="action-row">
+            <button class="main-btn" onclick="autoRoute()">
+                开始计算 (纯东财)
+                <span>支持 DJI / IXIC / SPX / A股</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="statusMsg">准备就绪</div>
+
+    <div id="resultArea" class="stats-grid">
+        <div class="card c-mu">
+            <div class="card-label">年化收益率 (μ)</div>
+            <div class="card-val" id="valMu">--</div>
+            <div class="card-sub">Annualized Log Return</div>
+        </div>
+        <div class="card c-sig">
+            <div class="card-label">年化波动率 (σ)</div>
+            <div class="card-val" id="valSigma">--</div>
+            <div class="card-sub">Std Dev (Adj Close)</div>
+        </div>
+        <div class="card c-k">
+            <div class="card-label">最优杠杆 (k)</div>
+            <div class="card-val val-k" id="valK">--</div>
+            <div class="card-sub">Cooper Formula: μ / σ²</div>
+        </div>
+    </div>
+
+    <div id="chartContainer" class="chart-area">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="paper-note">
+        <strong>修改说明：</strong><br>
+        1. <strong>DJI 修复</strong>：东方财富代码为 <code>100.UDI</code>，已添加特定映射，输入 DJI 即可调用。<br>
+        2. <strong>IXIC/SPX</strong>：保持原调用方法不变。<br>
+        3. <strong>数据源</strong>：严格限定为东方财富 (后复权)，已移除腾讯接口。
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    function setDays(days, btn) {
+        document.getElementById('daysInput').value = days;
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    // --- 纯东财路由核心 ---
+    function autoRoute() {
+        let symbol = document.getElementById('symbol').value.trim().toUpperCase();
+        const days = parseInt(document.getElementById('daysInput').value);
+        
+        if (!symbol) return alert("请输入代码");
+        
+        // 移除前缀
+        let cleanSymbol = symbol.replace(/^(US|SH|SZ|HK|GB_)/i, "");
+
+        const status = document.getElementById('statusMsg');
+        document.getElementById('resultArea').style.display = 'none';
+        document.getElementById('chartContainer').style.display = 'none';
+
+        // 1. A股/ETF (纯数字) -> 走东方财富
+        if (/^\d{5,6}$/.test(cleanSymbol)) {
+            status.innerText = "A股/ETF模式：连接东方财富 (后复权)...";
+            status.style.color = "#ef6c00";
+            
+            let secId = null;
+            if (['5', '6', '9'].includes(cleanSymbol[0])) secId = `1.${cleanSymbol}`; // 沪
+            else secId = `0.${cleanSymbol}`; // 深/北
+            
+            // 直接调用东财，不扫描
+            loadEastMoneyData(secId, days, (success, data) => {
+                if (success) processData(data, days, "东方财富(A股)");
+                else showError(`未找到数据: ${cleanSymbol}`);
+            });
+        } 
+        // 2. 美股/指数 (字母) -> 走东方财富 (扫描模式)
+        else {
+            status.innerText = "美股/指数模式：扫描东方财富...";
+            status.style.color = "#ef6c00"; 
+            
+            // 基础扫描列表
+            const candidates = [`100.${cleanSymbol}`, `105.${cleanSymbol}`, `106.${cleanSymbol}`, `107.${cleanSymbol}`];
+            
+            // --- 核心修改：指数特定映射 ---
+            
+            // 1. IXIC: 保持原样 (通常映射到 100.NDX 或 100.IXIC)
+            if (cleanSymbol === 'IXIC') {
+                candidates.unshift('100.NDX'); // 保持不变，您说这个能用
+            }
+            
+            // 2. DJI: 重点修改，东财代码是 100.UDI
+            if (cleanSymbol === 'DJI') {
+                candidates.unshift('100.UDI');  // 核心修复：UDI 是东财的道指代码
+                candidates.unshift('100.DJIA'); // 备用
+            }
+
+            // 3. SPX: 保持原样
+            if (cleanSymbol === 'SPX') {
+                candidates.unshift('100.SPX');
+            }
+
+            scanEastMoney(candidates, 0, days, cleanSymbol);
+        }
+    }
+
+    // --- 递归扫描东方财富接口 (移除腾讯Fallback) ---
+    function scanEastMoney(candidates, index, days, displayCode) {
+        if (index >= candidates.length) {
+            // 彻底失败，不切腾讯
+            showError(`东方财富未找到数据: ${displayCode}。请确认代码是否支持。`);
+            return;
+        }
+
+        const secId = candidates[index];
+        
+        // 尝试加载
+        loadEastMoneyData(secId, days, (success, data) => {
+            if (success) {
+                processData(data, days, "东方财富(后复权)");
+            } else {
+                // 失败继续尝试下一个候选
+                scanEastMoney(candidates, index + 1, days, displayCode);
+            }
+        });
+    }
+
+    // --- 东方财富底层请求 (fqt=2 后复权) ---
+    function loadEastMoneyData(secId, days, callback) {
+        const cbName = `em_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+        const limit = days + 20; 
+        const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?cb=${cbName}&secid=${secId}&ut=fa5fd1943c7b386f172d6893dbfba10b&fields1=f1&fields2=f51,f53&klt=101&fqt=2&end=20500101&lmt=${limit}`;
+
+        const script = document.createElement('script');
+        script.src = url;
+        
+        window[cbName] = function(res) {
+            delete window[cbName];
+            document.body.removeChild(script);
+
+            if (res && res.data && res.data.klines && res.data.klines.length > 5) {
+                callback(true, res.data.klines);
+            } else {
+                callback(false, null);
+            }
+        };
+        
+        script.onerror = () => { 
+            document.body.removeChild(script);
+            callback(false, null); 
+        };
+        document.body.appendChild(script);
+    }
+
+    // --- 数据处理 ---
+    function processData(klines, days, sourceName) {
+        let dates = [];
+        let prices = [];
+        
+        klines.forEach(str => {
+            let parts = str.split(',');
+            let d = parts[0];
+            let p = parseFloat(parts[1]);
+            
+            if (!isNaN(p) && p > 0) {
+                dates.push(d);
+                prices.push(p);
+            }
+        });
+
+        if (prices.length > days) {
+            prices = prices.slice(-days);
+            dates = dates.slice(-days);
+        }
+
+        calculateStrict(dates, prices, sourceName);
+    }
+
+    // --- 严格计算 ---
+    function calculateStrict(dates, prices, sourceName) {
+        if (prices.length < 5) { showError("有效数据过少"); return; }
+        document.getElementById('statusMsg').innerText = `获取成功 (${prices.length}天)，计算中...`;
+
+        let logReturns = [];
+        for (let i = 1; i < prices.length; i++) {
+            let val = prices[i] / prices[i-1];
+            if (val <= 0) continue;
+            logReturns.push(Math.log(val));
+        }
+
+        const n = logReturns.length;
+        if (n === 0) { showError("数据异常"); return; }
+
+        const sumR = logReturns.reduce((a, b) => a + b, 0);
+        const mu_daily = sumR / n;
+
+        const sumSqDiff = logReturns.reduce((sum, r) => sum + Math.pow(r - mu_daily, 2), 0);
+        const var_daily = sumSqDiff / (n - 1);
+        const sigma_daily = Math.sqrt(var_daily);
+
+        // Cooper Formula
+        let k = mu_daily / var_daily;
+
+        // Annualized
+        const mu_annual = mu_daily * 252;
+        const sigma_annual = sigma_daily * Math.sqrt(252);
+
+        // UI
+        const elMu = document.getElementById('valMu');
+        elMu.innerText = (mu_annual * 100).toFixed(2) + "%";
+        elMu.style.color = mu_annual >= 0 ? '#f56c6c' : '#67c23a';
+
+        document.getElementById('valSigma').innerText = (sigma_annual * 100).toFixed(2) + "%";
+
+        const elK = document.getElementById('valK');
+        elK.innerText = k.toFixed(2) + " x";
+        
+        if (isNaN(k)) {
+            elK.innerText = "Error"; elK.style.color = "#999";
+        } else if (k <= 0) {
+            elK.style.color = '#67c23a';
+        } else if (k > 5) {
+            elK.style.color = '#e6a23c';
+        } else {
+            elK.style.color = '#e65100';
+        }
+
+        document.getElementById('resultArea').style.display = 'grid';
+        document.getElementById('chartContainer').style.display = 'block';
+        document.getElementById('statusMsg').innerText = "计算完成";
+
+        drawChart(dates, prices);
+    }
+
+    function drawChart(dates, prices) {
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: '后复权股价 (Back Adj)',
+                    data: prices,
+                    borderColor: '#ef6c00',
+                    backgroundColor: 'rgba(239, 108, 0, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                scales: { x: { ticks: { maxTicksLimit: 10 } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function showError(msg) {
+        const el = document.getElementById('statusMsg');
+        el.innerText = "❌ " + msg;
+        el.style.color = "red";
+    }
+</script>
+
+</body>
+</html>
