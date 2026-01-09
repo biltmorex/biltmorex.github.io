@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>美股个股/指数历史数据抓取器</title>
+    <style>
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; display: flex; justify-content: center; padding: 40px; background: #f4f7f9; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 480px; }
+        h3 { margin-top: 0; color: #333; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .section { margin-bottom: 20px; padding: 15px; border: 1px solid #f0f0f0; border-radius: 8px; background: #fafafa; }
+        .section-title { font-weight: bold; margin-bottom: 10px; color: #555; display: block; font-size: 14px; }
+        label { display: block; margin-bottom: 5px; font-size: 13px; color: #666; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; margin-bottom: 10px; }
+        input:focus { border-color: #007bff; outline: none; }
+        .flex-row { display: flex; gap: 10px; }
+        button { width: 100%; padding: 14px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s; }
+        button:hover { background: #218838; transform: translateY(-1px); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #log { margin-top: 20px; padding: 12px; font-size: 13px; border-radius: 6px; display: none; line-height: 1.5; }
+        .status-info { background: #e7f3ff; color: #007bff; border: 1px solid #b3d7ff; display: block !important; }
+        .status-success { background: #e6ffed; color: #28a745; border: 1px solid #b7eb8f; display: block !important; }
+        .status-error { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; display: block !important; }
+        .hint { font-size: 11px; color: #999; margin-top: -5px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3>美股数据抓取器</h3>
+    
+    <!-- 第一步：选择或输入代码 -->
+    <div class="section">
+        <span class="section-title">1. 选择指数或输入个股代码</span>
+        <select id="indexSelect">
+            <option value="">-- 手动输入个股代码 --</option>
+            <option value="^GSPC">标普500 (^GSPC)</option>
+            <option value="^IXIC">纳斯达克综合 (^IXIC)</option>
+            <option value="^NDX">纳斯达克100 (^NDX)</option>
+            <option value="^DJI">道琼斯工业 (^DJI)</option>
+        </select>
+        <input type="text" id="customTicker" placeholder="例如: AAPL, TSLA, NVDA, MSFT">
+        <div class="hint">提示：个股直接输入代码（如 AAPL），指数需加 ^</div>
+    </div>
+
+    <!-- 第二步：日期设置 -->
+    <div class="section">
+        <span class="section-title">2. 设置时间范围</span>
+        <div class="flex-row">
+            <div style="flex:1">
+                <label>开始日期:</label>
+                <input type="date" id="startDate" value="2020-01-01">
+            </div>
+            <div style="flex:1">
+                <label>结束日期:</label>
+                <input type="date" id="endDate">
+            </div>
+        </div>
+    </div>
+    
+    <button id="btn">获取并下载 CSV 数据</button>
+    <div id="log"></div>
+</div>
+
+<script>
+    // 初始化结束日期为今天
+    document.getElementById('endDate').valueAsDate = new Date();
+
+    const indexSelect = document.getElementById('indexSelect');
+    const customTicker = document.getElementById('customTicker');
+    const startDateInput = document.getElementById('startDate');
+
+    // 自动切换逻辑
+    indexSelect.addEventListener('change', function() {
+        if (this.value !== "") {
+            customTicker.value = this.value;
+            customTicker.disabled = true;
+            // 针对指数设置建议的开始日期
+            if (this.value === '^GSPC') startDateInput.value = '1927-12-30';
+            else if (this.value === '^IXIC') startDateInput.value = '1971-02-05';
+            else if (this.value === '^NDX') startDateInput.value = '1985-10-01';
+            else if (this.value === '^DJI') startDateInput.value = '1920-01-01';
+        } else {
+            customTicker.value = "";
+            customTicker.disabled = false;
+            customTicker.focus();
+        }
+    });
+
+    document.getElementById('btn').addEventListener('click', async () => {
+        const btn = document.getElementById('btn');
+        const log = document.getElementById('log');
+        
+        let ticker = customTicker.value.trim().toUpperCase();
+        if (!ticker) {
+            alert("请输入股票代码！");
+            return;
+        }
+
+        const startStr = document.getElementById('startDate').value;
+        const endStr = document.getElementById('endDate').value;
+        const startTimestamp = Math.floor(new Date(startStr).getTime() / 1000);
+        const endTimestamp = Math.floor(new Date(endStr).getTime() / 1000) + 86400; // 包含当天
+        
+        btn.disabled = true;
+        log.innerText = `正在获取 ${ticker} 的历史数据...`;
+        log.className = "status-info";
+
+        // Yahoo Finance 接口 URL
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${startTimestamp}&period2=${endTimestamp}&interval=1d&events=history&includeAdjustedClose=true`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+
+        try {
+            const response = await fetch(proxyUrl);
+            const data = await response.json();
+            
+            if (!data.contents) throw new Error("代理服务器未返回内容");
+            
+            const json = JSON.parse(data.contents);
+            if (!json.chart || !json.chart.result) {
+                throw new Error(json.chart?.error?.description || "未找到该代码，请检查输入是否正确");
+            }
+
+            const result = json.chart.result[0];
+            const timestamps = result.timestamp;
+            if (!timestamps) throw new Error("该时间段内没有数据");
+
+            const quotes = result.indicators.quote[0];
+            const adjClose = result.indicators.adjclose ? result.indicators.adjclose[0].adjclose : null;
+            
+            let csv = "Date,Open,High,Low,Close,Adj Close,Volume\n";
+            for (let i = 0; i < timestamps.length; i++) {
+                const date = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
+                const o = quotes.open[i]?.toFixed(2) || "";
+                const h = quotes.high[i]?.toFixed(2) || "";
+                const l = quotes.low[i]?.toFixed(2) || "";
+                const c = quotes.close[i]?.toFixed(2) || "";
+                const ac = adjClose ? adjClose[i]?.toFixed(2) : c;
+                const v = quotes.volume[i] || "0";
+                csv += `${date},${o},${h},${l},${c},${ac},${v}\n`;
+            }
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${ticker}_History_${dateToString(new Date())}.csv`;
+            a.click();
+            
+            log.innerText = `成功！已下载 ${ticker} 的 ${timestamps.length} 行历史数据。`;
+            log.className = "status-success";
+        } catch (err) {
+            console.error(err);
+            log.innerText = "获取失败: " + err.message;
+            log.className = "status-error";
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    function dateToString(date) {
+        return date.toISOString().split('T')[0];
+    }
+</script>
+</body>
+</html>
