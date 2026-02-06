@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美股回撤全能王 (七姐妹 + 指数新浪源)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #007bff; --active-bg: #e7f1ff; --text: #333; }
+        body { font-family: "Microsoft YaHei", sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: var(--text); }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+
+        /* 顶部标签切换 */
+        .tabs { display: flex; background: #f8f9fa; border-bottom: 1px solid #eee; }
+        .tab { flex: 1; padding: 18px; text-align: center; cursor: pointer; font-weight: bold; color: #666; transition: all 0.2s; font-size: 16px; }
+        .tab:hover { background: #f0f0f0; }
+        .tab.active { background: #fff; color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        /* 内容区域 */
+        .content-panel { padding: 25px; display: none; }
+        .content-panel.active { display: block; }
+
+        /* 控件样式 */
+        .control-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; justify-content: center; margin-bottom: 20px; }
+        
+        select, input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
+        input { width: 80px; text-transform: uppercase; font-weight: bold; }
+
+        button { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; color: white; }
+        button:hover { opacity: 0.9; }
+        
+        .btn-search { background: #ff6600; } /* 东财橙 */
+        .btn-sina { background: #d81e06; }   /* 新浪红 */
+
+        /* 快捷按钮群 */
+        .quick-group { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+        .q-btn { background: #fff; color: #555; border: 1px solid #ddd; font-size: 13px; padding: 6px 12px; border-radius: 20px; }
+        .q-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--active-bg); }
+
+        /* 状态展示 */
+        .status-bar { text-align: center; font-size: 13px; color: #888; margin: 15px 0; height: 20px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: #fff; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #f0f0f0; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+        .card-val { font-size: 24px; font-weight: bold; margin: 5px 0; }
+        .card-lbl { font-size: 12px; color: #999; }
+        .red { color: #dc3545; } .green { color: #28a745; }
+
+        /* 图表 */
+        .chart-box { position: relative; height: 450px; }
+        .loader { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9); display: none; justify-content: center; align-items: center; z-index: 10; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 标签页导航 -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('stock')">个股回撤 (美股七姐妹)</div>
+        <div class="tab" onclick="switchTab('index')">指数回撤 (新浪源)</div>
+    </div>
+
+    <!-- 面板1：个股 (东方财富) -->
+    <div id="panel-stock" class="content-panel active">
+        <div class="control-row">
+            <input type="text" id="stockSymbol" placeholder="代码" value="NVDA">
+            <select id="stockMarket">
+                <option value="105">纳斯达克 (105)</option>
+                <option value="106">纽交所 (106)</option>
+            </select>
+            <select id="stockLimit">
+                <option value="250">1 年</option>
+                <option value="1250" selected>5 年</option>
+                <option value="2500">10 年</option>
+                <option value="100000">全历史</option>
+            </select>
+            <button class="btn-search" onclick="fetchStock()">查询 (东财复权)</button>
+        </div>
+
+        <div style="text-align:center; font-size:12px; color:#666; margin-bottom:5px;">✨ 美股七姐妹 (Magnificent 7) 快捷键：</div>
+        <div class="quick-group">
+            <button class="q-btn" onclick="quickStock('NVDA', '105')">英伟达 (NVDA)</button>
+            <button class="q-btn" onclick="quickStock('AAPL', '105')">苹果 (AAPL)</button>
+            <button class="q-btn" onclick="quickStock('MSFT', '105')">微软 (MSFT)</button>
+            <button class="q-btn" onclick="quickStock('GOOG', '105')">谷歌 (GOOG)</button>
+            <button class="q-btn" onclick="quickStock('AMZN', '105')">亚马逊 (AMZN)</button>
+            <button class="q-btn" onclick="quickStock('META', '105')">Meta (META)</button>
+            <button class="q-btn" onclick="quickStock('TSLA', '105')">特斯拉 (TSLA)</button>
+        </div>
+        <div class="quick-group" style="margin-top:5px;">
+             <button class="q-btn" onclick="quickStock('AMD', '105')">AMD</button>
+             <button class="q-btn" onclick="quickStock('BABA', '106')">阿里 (BABA)</button>
+        </div>
+    </div>
+
+    <!-- 面板2：指数 (新浪/腾讯) -->
+    <div id="panel-index" class="content-panel">
+        <div class="control-row">
+            <span>时间范围:</span>
+            <select id="indexLimit">
+                <option value="250">1 年</option>
+                <option value="1250" selected>5 年</option>
+                <option value="2500">10 年</option>
+                <option value="max">全历史</option>
+            </select>
+        </div>
+        <div class="quick-group">
+            <button class="btn-sina" onclick="fetchIndex('SINA', 'SPX')">标普500 (新浪)</button>
+            <button class="btn-sina" onclick="fetchIndex('SINA', 'NDX')">纳指100 (新浪)</button>
+            <button class="btn-sina" onclick="fetchIndex('SINA', 'IXIC')">纳指综合 (新浪)</button>
+            <button class="btn-sina" onclick="fetchIndex('SINA', 'DJI')">道琼斯 (新浪)</button>
+        </div>
+        <div style="text-align:center; font-size:12px; color:#999; margin-top:10px;">备用通道：</div>
+        <div class="quick-group">
+            <button class="q-btn" onclick="fetchIndex('TENCENT', 'IXIC')">纳综 (腾讯)</button>
+            <button class="q-btn" onclick="fetchIndex('TENCENT', 'DJI')">道指 (腾讯)</button>
+        </div>
+    </div>
+
+    <!-- 公共展示区 -->
+    <div style="padding: 0 25px 25px 25px;">
+        <div class="status-bar" id="statusMsg">准备就绪，请选择上方功能</div>
+        
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-lbl">最新收盘</div>
+                <div class="card-val" id="valPrice">-</div>
+                <div class="card-lbl" id="valDate">-</div>
+            </div>
+            <div class="card">
+                <div class="card-lbl">区间最高 (盘中)</div>
+                <div class="card-val" id="valHigh">-</div>
+            </div>
+            <div class="card">
+                <div class="card-lbl">当前回撤</div>
+                <div class="card-val red" id="valDD">-</div>
+            </div>
+            <div class="card">
+                <div class="card-lbl">最大回撤</div>
+                <div class="card-val red" id="valMaxDD">-</div>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <div class="loader" id="loader">数据加载中...</div>
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+    let currentMode = 'stock'; // 'stock' or 'index'
+
+    // --- 标签页切换 ---
+    function switchTab(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
+        
+        if (mode === 'stock') {
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            document.getElementById('panel-stock').classList.add('active');
+            document.getElementById('statusMsg').innerText = "个股模式：使用东方财富数据 (支持复权)";
+        } else {
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            document.getElementById('panel-index').classList.add('active');
+            document.getElementById('statusMsg').innerText = "指数模式：使用新浪财经数据 (国内直连)";
+        }
+    }
+
+    // --- JSONP 工具 ---
+    function jsonp(url, callbackName, timeoutMs = 6000) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            const timer = setTimeout(() => {
+                cleanup(); reject(new Error("请求超时"));
+            }, timeoutMs);
+
+            function cleanup() {
+                delete window[callbackName];
+                if (document.body.contains(script)) document.body.removeChild(script);
+                clearTimeout(timer);
+            }
+
+            window[callbackName] = function(data) {
+                cleanup(); resolve(data);
+            };
+
+            script.src = url;
+            script.onerror = () => { cleanup(); reject(new Error("网络连接失败")); };
+            document.body.appendChild(script);
+        });
+    }
+
+    // ==========================================
+    // 模块 1: 个股 (东方财富)
+    // ==========================================
+    function quickStock(sym, mkt) {
+        document.getElementById('stockSymbol').value = sym;
+        document.getElementById('stockMarket').value = mkt;
+        fetchStock();
+    }
+
+    async function fetchStock() {
+        const symbol = document.getElementById('stockSymbol').value.toUpperCase();
+        const market = document.getElementById('stockMarket').value;
+        const limit = document.getElementById('stockLimit').value;
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('statusMsg');
+
+        loader.style.display = 'flex';
+        status.innerText = `正在查询个股 ${symbol}...`;
+
+        // 东方财富接口：fqt=1 (前复权)
+        const secid = `${market}.${symbol}`;
+        const cbName = 'cb_em_' + Date.now();
+        const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1&fields2=f51,f53,f54&klt=101&fqt=1&end=20500101&lmt=${limit}&cb=${cbName}&_=${Math.random()}`;
+
+        try {
+            const res = await jsonp(url, cbName);
+            if (!res || !res.data || !res.data.klines) {
+                throw new Error("无数据，请检查代码或尝试切换上市地(105/106)");
+            }
+
+            const klines = res.data.klines;
+            let dates = [], prices = [], highs = [];
+            klines.forEach(s => {
+                const p = s.split(',');
+                dates.push(p[0]);
+                prices.push(parseFloat(p[1]));
+                highs.push(parseFloat(p[2]));
+            });
+
+            status.innerText = `✅ 个股加载成功: ${symbol} (复权数据)`;
+            calculateAndDraw(dates, prices, highs, symbol + " (个股)");
+
+        } catch (err) {
+            alert(err.message);
+            status.innerText = "查询失败";
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    // ==========================================
+    // 模块 2: 指数 (新浪 + 腾讯)
+    // ==========================================
+    const IDX_CFG = {
+        SINA: { SPX: '.INX', NDX: '.NDX', IXIC: '.IXIC', DJI: '.DJI' },
+        TENCENT: { IXIC: 'us.IXIC', DJI: 'us.DJI' }
+    };
+
+    function fetchIndex(source, type) {
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('statusMsg');
+        const limit = document.getElementById('indexLimit').value;
+        
+        loader.style.display = 'flex';
+        status.innerText = `正在连接 ${source} 获取指数...`;
+
+        if (source === 'SINA') loadSinaIndex(IDX_CFG.SINA[type], type, limit);
+        else loadTencentIndex(IDX_CFG.TENCENT[type], type, limit);
+    }
+
+    // 新浪加载器
+    function loadSinaIndex(symbol, name, range) {
+        const varName = 'sina_' + Date.now();
+        const url = `https://stock.finance.sina.com.cn/usstock/api/jsonp_v2.php/window.${varName}=/US_MinKService.getDailyK?symbol=${symbol}&___=${Math.random()}`;
+        
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = () => {
+            const data = window[varName];
+            if (data && Array.isArray(data)) {
+                // 新浪数据排序
+                data.sort((a, b) => new Date(a.d) - new Date(b.d));
+                
+                // 客户端截取时间范围
+                let finalData = data;
+                if (range !== 'max') {
+                    const num = parseInt(range);
+                    if (data.length > num) finalData = data.slice(-num);
+                }
+
+                let dates = [], prices = [], highs = [];
+                finalData.forEach(k => {
+                    dates.push(k.d);
+                    prices.push(parseFloat(k.c));
+                    highs.push(parseFloat(k.h));
+                });
+                
+                document.getElementById('statusMsg').innerText = `✅ 新浪数据加载成功: ${name}`;
+                calculateAndDraw(dates, prices, highs, name + " (新浪指数)");
+                delete window[varName];
+                document.body.removeChild(script);
+                document.getElementById('loader').style.display = 'none';
+            } else {
+                alert("新浪返回空数据");
+                document.getElementById('loader').style.display = 'none';
+            }
+        };
+        script.onerror = () => { alert("新浪连接失败"); document.getElementById('loader').style.display = 'none'; };
+        document.body.appendChild(script);
+    }
+
+    // 腾讯加载器 (备用)
+    function loadTencentIndex(symbol, name, range) {
+        const varName = 'v_' + Date.now();
+        const num = (range === 'max') ? 100000 : range;
+        const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=${varName}&param=${symbol},day,,,${num},qfq`;
+        
+        const script = document.createElement('script');
+        script.src = url;
+        script.onload = () => {
+            const res = window[varName];
+            if (res && res.data && res.data[symbol]) {
+                const dayData = res.data[symbol].day || res.data[symbol].qfqday;
+                let dates = [], prices = [], highs = [];
+                dayData.forEach(item => {
+                    let d = item[0]; 
+                    dates.push(`${d.substring(0,4)}-${d.substring(4,6)}-${d.substring(6,8)}`);
+                    prices.push(parseFloat(item[2]));
+                    highs.push(parseFloat(item[3]));
+                });
+                document.getElementById('statusMsg').innerText = `✅ 腾讯数据加载成功: ${name}`;
+                calculateAndDraw(dates, prices, highs, name + " (腾讯指数)");
+                delete window[varName];
+                document.body.removeChild(script);
+                document.getElementById('loader').style.display = 'none';
+            }
+        };
+        script.onerror = () => { alert("腾讯连接失败"); document.getElementById('loader').style.display = 'none'; };
+        document.body.appendChild(script);
+    }
+
+    // ==========================================
+    // 核心计算与绘图
+    // ==========================================
+    function calculateAndDraw(dates, prices, highs, title) {
+        let drawdowns = [];
+        let runningMaxClose = -Infinity;
+        let maxDD = 0;
+        let trueMax = -Infinity;
+
+        // 计算区间最高 (用于显示)
+        for (let h of highs) {
+            if (h > trueMax) trueMax = h;
+        }
+
+        // 计算回撤 (基于收盘价)
+        for (let p of prices) {
+            if (p > runningMaxClose) runningMaxClose = p;
+            let dd = ((p - runningMaxClose) / runningMaxClose) * 100;
+            drawdowns.push(dd);
+            if (dd < maxDD) maxDD = dd;
+        }
+
+        const last = prices.length - 1;
+
+        // 更新 UI
+        document.getElementById('valPrice').innerText = prices[last].toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('valDate').innerText = dates[last];
+        document.getElementById('valHigh').innerText = trueMax.toLocaleString(undefined, {minimumFractionDigits: 2});
+        
+        const currDD = drawdowns[last];
+        const elDD = document.getElementById('valDD');
+        elDD.innerText = currDD.toFixed(2) + "%";
+        elDD.className = 'card-val ' + (currDD >= 0 ? 'green' : 'red');
+        
+        document.getElementById('valMaxDD').innerText = maxDD.toFixed(2) + "%";
+
+        // 绘图
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        // 颜色配置
+        const mainColor = currentMode === 'stock' ? '#ff6600' : '#007bff';
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: '价格/点位',
+                        data: prices,
+                        borderColor: mainColor,
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: '回撤 %',
+                        data: drawdowns,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.15)',
+                        borderWidth: 1,
+                        fill: true,
+                        pointRadius: 0,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: { display: true, text: title },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let val = context.parsed.y;
+                                if (context.dataset.label.includes('回撤')) return `回撤: ${val.toFixed(2)}%`;
+                                return `价格: ${val.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 10 } },
+                    y: { 
+                        type: 'linear', position: 'left', 
+                        title: { display: true, text: '回撤幅度 (%)' }
+                    },
+                    y1: { 
+                        type: 'linear', position: 'right',
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
