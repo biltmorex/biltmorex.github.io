@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1A2B 猜数字游戏</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --bg-color: #f5f6fa;
+            --text-color: #2f3640;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            font-size: 1.2rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            text-align: center;
+            letter-spacing: 5px;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            transition: opacity 0.2s;
+        }
+
+        #guess-btn {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        #reset-btn {
+            background-color: #95a5a6;
+            color: white;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .history {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 15px;
+            margin: 5px 0;
+            background: #f9f9f9;
+            border-radius: 5px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .result-badge {
+            font-weight: bold;
+        }
+
+        .result-a { color: var(--success-color); }
+        .result-b { color: var(--warning-color); }
+
+        .msg {
+            margin: 10px 0;
+            font-size: 0.9rem;
+            min-height: 1.2rem;
+        }
+
+        .error { color: #e74c3c; }
+        .win { color: var(--success-color); font-weight: bold; font-size: 1.2rem; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>1A2B 猜数字</h1>
+    <p>请输入4位不重复的数字</p>
+    
+    <div class="input-group">
+        <input type="text" id="user-input" maxlength="4" placeholder="例如 1234" autocomplete="off">
+        <button id="guess-btn">猜测</button>
+    </div>
+    
+    <div id="msg-area" class="msg"></div>
+    
+    <div class="history" id="history-list">
+        <!-- 历史记录将显示在这里 -->
+    </div>
+
+    <button id="reset-btn">重新开始</button>
+</div>
+
+<script>
+    let secret = "";
+    let gameOver = false;
+    let attempts = 0;
+
+    const inputEl = document.getElementById('user-input');
+    const guessBtn = document.getElementById('guess-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const msgArea = document.getElementById('msg-area');
+    const historyList = document.getElementById('history-list');
+
+    // 初始化游戏
+    function initGame() {
+        // 生成4个不重复的随机数
+        const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        digits.sort(() => Math.random() - 0.5);
+        secret = digits.slice(0, 4).join('');
+        
+        // 重置状态
+        gameOver = false;
+        attempts = 0;
+        historyList.innerHTML = '';
+        msgArea.innerHTML = '';
+        msgArea.className = 'msg';
+        inputEl.value = '';
+        inputEl.disabled = false;
+        guessBtn.disabled = false;
+        console.log("答案: " + secret); // 调试用
+    }
+
+    // 检查输入合法性
+    function validateInput(val) {
+        if (!/^\d{4}$/.test(val)) return "请输入4位纯数字";
+        const unique = new Set(val);
+        if (unique.size !== 4) return "数字不能重复";
+        return null;
+    }
+
+    // 处理猜测
+    function handleGuess() {
+        if (gameOver) return;
+
+        const guess = inputEl.value.trim();
+        const error = validateInput(guess);
+
+        if (error) {
+            msgArea.textContent = error;
+            msgArea.className = 'msg error';
+            return;
+        }
+
+        msgArea.textContent = "";
+        attempts++;
+
+        let a = 0;
+        let b = 0;
+
+        // 计算 A 和 B
+        const guessArr = guess.split('');
+        const secretArr = secret.split('');
+
+        for (let i = 0; i < 4; i++) {
+            if (guessArr[i] === secretArr[i]) {
+                a++;
+            } else if (secret.includes(guessArr[i])) {
+                b++;
+            }
+        }
+
+        addHistory(guess, a, b);
+
+        if (a === 4) {
+            msgArea.textContent = `恭喜你！用了 ${attempts} 次猜中了！`;
+            msgArea.className = 'msg win';
+            gameOver = true;
+            inputEl.disabled = true;
+            guessBtn.disabled = true;
+        } else {
+            inputEl.value = '';
+            inputEl.focus();
+        }
+    }
+
+    // 添加到历史记录
+    function addHistory(guess, a, b) {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+            <span>第 ${attempts} 次: <strong>${guess}</strong></span>
+            <span class="result-badge">
+                <span class="result-a">${a}A</span>
+                <span class="result-b">${b}B</span>
+            </span>
+        `;
+        historyList.prepend(item);
+    }
+
+    // 绑定事件
+    guessBtn.addEventListener('click', handleGuess);
+    
+    inputEl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleGuess();
+    });
+
+    resetBtn.addEventListener('click', initGame);
+
+    // 启动游戏
+    initGame();
+</script>
+
+</body>
+</html>
