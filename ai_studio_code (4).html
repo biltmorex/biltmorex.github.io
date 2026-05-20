@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球核心资产回撤分析 (A股/港股/美股)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #007bff; --em-red: #df3031; --bg: #f4f6f9; }
+        body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 25px; }
+
+        h2 { text-align: center; margin-top: 0; color: #2c3e50; margin-bottom: 25px; }
+
+        /* 搜索控制区 */
+        .search-box { 
+            background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #eee;
+            display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; justify-content: center; margin-bottom: 20px;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        .input-group label { font-size: 13px; font-weight: bold; color: #555; }
+        
+        input, select { padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+        input:focus, select:focus { border-color: var(--primary); }
+        input { width: 100px; text-transform: uppercase; font-weight: bold; }
+
+        .btn-search { 
+            padding: 9px 20px; background: var(--em-red); color: #fff; border: none; border-radius: 6px; 
+            font-size: 15px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; height: 38px;
+        }
+        .btn-search:hover { opacity: 0.9; }
+
+        /* 快捷标签页 */
+        .tabs { display: flex; justify-content: center; gap: 10px; border-bottom: 2px solid #eee; margin-bottom: 15px; }
+        .tab { padding: 8px 15px; cursor: pointer; font-size: 14px; font-weight: bold; color: #666; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .quick-panel { display: none; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+        .quick-panel.active { display: flex; }
+        
+        .q-btn { 
+            background: #fff; border: 1px solid #ddd; color: #444; padding: 6px 14px; 
+            border-radius: 20px; font-size: 13px; cursor: pointer; transition: all 0.2s;
+        }
+        .q-btn:hover { border-color: var(--primary); color: var(--primary); background: #f0f7ff; }
+
+        /* 状态与数据 */
+        .status-msg { text-align: center; font-size: 13px; color: #888; margin-bottom: 15px; height: 20px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: #fff; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #eaeaea; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .card-lbl { font-size: 13px; color: #888; margin-bottom: 5px; }
+        .card-val { font-size: 24px; font-weight: bold; color: #222; }
+        
+        .red { color: #d0021b; } .green { color: #179c17; }
+
+        /* 图表 */
+        .chart-box { position: relative; height: 450px; width: 100%; }
+        .loader { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9); display: none; justify-content: center; align-items: center; z-index: 10; font-weight: bold; color: var(--em-red);}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🌍 全球核心资产回撤分析</h2>
+
+    <!-- 自定义搜索区 -->
+    <div class="search-box">
+        <div class="input-group">
+            <label>股票/指数代码</label>
+            <input type="text" id="symbol" placeholder="如: 00700" value="00700">
+        </div>
+        <div class="input-group">
+            <label>市场选择</label>
+            <select id="market">
+                <option value="116" selected>港股 (116)</option>
+                <option value="1">沪市 A股 (1)</option>
+                <option value="0">深市 A股 (0)</option>
+                <option value="105">美股-纳斯达克 (105)</option>
+                <option value="106">美股-纽交所 (106)</option>
+                <option value="100">美股-指数专区 (100)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>资产类型</label>
+            <select id="assetType">
+                <option value="1">个股 (自动前复权)</option>
+                <option value="0">指数 (不复权)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>时间范围</label>
+            <select id="timeLimit">
+                <option value="250">最近 1 年</option>
+                <option value="1250" selected>最近 5 年</option>
+                <option value="2500">最近 10 年</option>
+                <option value="100000">全历史</option>
+            </select>
+        </div>
+        <button class="btn-search" onclick="fetchData()">🚀 获取数据</button>
+    </div>
+
+    <!-- 快捷按键区 -->
+    <div class="tabs">
+        <div class="tab" onclick="switchTab('us')">🇺🇸 美股七姐妹</div>
+        <div class="tab active" onclick="switchTab('hk')">🇭🇰 核心港股</div>
+        <div class="tab" onclick="switchTab('cn')">🇨🇳 A股核心资产</div>
+        <div class="tab" onclick="switchTab('idx')">📊 常见指数</div>
+    </div>
+
+    <div id="panel-us" class="quick-panel">
+        <!-- quickLoad(代码, 市场, 是否是指数0/1) -->
+        <button class="q-btn" onclick="quickLoad('NVDA', '105', '1')">英伟达 (NVDA)</button>
+        <button class="q-btn" onclick="quickLoad('AAPL', '105', '1')">苹果 (AAPL)</button>
+        <button class="q-btn" onclick="quickLoad('MSFT', '105', '1')">微软 (MSFT)</button>
+        <button class="q-btn" onclick="quickLoad('GOOG', '105', '1')">谷歌 (GOOG)</button>
+        <button class="q-btn" onclick="quickLoad('AMZN', '105', '1')">亚马逊 (AMZN)</button>
+        <button class="q-btn" onclick="quickLoad('META', '105', '1')">Meta (META)</button>
+        <button class="q-btn" onclick="quickLoad('TSLA', '105', '1')">特斯拉 (TSLA)</button>
+    </div>
+
+    <div id="panel-hk" class="quick-panel active">
+        <button class="q-btn" onclick="quickLoad('00700', '116', '1')">腾讯控股 (00700)</button>
+        <button class="q-btn" onclick="quickLoad('09988', '116', '1')">阿里巴巴 (09988)</button>
+        <button class="q-btn" onclick="quickLoad('03690', '116', '1')">美团 (03690)</button>
+        <button class="q-btn" onclick="quickLoad('01810', '116', '1')">小米集团 (01810)</button>
+        <button class="q-btn" onclick="quickLoad('00941', '116', '1')">中国移动 (00941)</button>
+        <button class="q-btn" onclick="quickLoad('00883', '116', '1')">中国海油 (00883)</button>
+    </div>
+
+    <div id="panel-cn" class="quick-panel">
+        <button class="q-btn" onclick="quickLoad('600519', '1', '1')">贵州茅台 (600519)</button>
+        <button class="q-btn" onclick="quickLoad('300750', '0', '1')">宁德时代 (300750)</button>
+        <button class="q-btn" onclick="quickLoad('002594', '0', '1')">比亚迪 (002594)</button>
+        <button class="q-btn" onclick="quickLoad('601318', '1', '1')">中国平安 (601318)</button>
+        <button class="q-btn" onclick="quickLoad('600900', '1', '1')">长江电力 (600900)</button>
+        <button class="q-btn" onclick="quickLoad('000858', '0', '1')">五粮液 (000858)</button>
+    </div>
+
+    <div id="panel-idx" class="quick-panel">
+        <button class="q-btn" onclick="quickLoad('000001', '1', '0')">上证指数</button>
+        <button class="q-btn" onclick="quickLoad('000300', '1', '0')">沪深300</button>
+        <button class="q-btn" onclick="quickLoad('HSI', '116', '0')">恒生指数</button>
+        <button class="q-btn" onclick="quickLoad('HSTECH', '116', '0')">恒生科技</button>
+        <button class="q-btn" onclick="quickLoad('SPX', '100', '0')">标普500 (美)</button>
+        <button class="q-btn" onclick="quickLoad('NDX', '100', '0')">纳指100 (美)</button>
+    </div>
+
+    <!-- 数据展示区 -->
+    <div class="status-msg" id="statusMsg">支持复权算法，完美处理分红和拆股。</div>
+    
+    <div class="stats-grid">
+        <div class="card">
+            <div class="card-lbl">最新收盘价</div>
+            <div class="card-val" id="valPrice">-</div>
+            <div class="card-lbl" id="valDate" style="font-size:11px; margin-top:3px;">-</div>
+        </div>
+        <div class="card">
+            <div class="card-lbl">区间最高价 (盘中)</div>
+            <div class="card-val" id="valHigh">-</div>
+        </div>
+        <div class="card">
+            <div class="card-lbl">当前回撤</div>
+            <div class="card-val red" id="valDD">-</div>
+        </div>
+        <div class="card">
+            <div class="card-lbl">区间最大回撤</div>
+            <div class="card-val red" id="valMaxDD">-</div>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <div class="loader" id="loader">正在直连东方财富获取数据...</div>
+        <canvas id="myChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    // --- 界面交互 ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.quick-panel').forEach(p => p.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById(`panel-${tabName}`).classList.add('active');
+    }
+
+    function quickLoad(symbol, market, type) {
+        document.getElementById('symbol').value = symbol;
+        document.getElementById('market').value = market;
+        document.getElementById('assetType').value = type;
+        fetchData();
+    }
+
+    // --- 核心网络请求 (JSONP) ---
+    function jsonp(url, callbackName) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            const timer = setTimeout(() => { cleanup(); reject(new Error("请求超时，请重试")); }, 6000);
+
+            function cleanup() {
+                delete window[callbackName];
+                if (document.body.contains(script)) document.body.removeChild(script);
+                clearTimeout(timer);
+            }
+
+            window[callbackName] = function(data) { cleanup(); resolve(data); };
+            script.src = url;
+            script.onerror = () => { cleanup(); reject(new Error("网络错误")); };
+            document.body.appendChild(script);
+        });
+    }
+
+    async function fetchData() {
+        const symbol = document.getElementById('symbol').value.toUpperCase().trim();
+        const market = document.getElementById('market').value;
+        const type = document.getElementById('assetType').value; // 1=复权, 0=不复权
+        const limit = document.getElementById('timeLimit').value;
+        
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('statusMsg');
+
+        if (!symbol) { alert("请输入代码"); return; }
+
+        loader.style.display = 'flex';
+        status.innerText = `正在查询 ${symbol}...`;
+
+        // 构造东方财富请求
+        const secid = `${market}.${symbol}`;
+        const cbName = 'cb_em_' + Date.now();
+        // klt=101(日线), fqt=type(动态复权设定)
+        const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3&fields2=f51,f53,f54&klt=101&fqt=${type}&end=20500101&lmt=${limit}&cb=${cbName}&_=${Math.random()}`;
+
+        try {
+            const res = await jsonp(url, cbName);
+            
+            if (!res || !res.data || !res.data.klines) {
+                throw new Error("无数据！请检查【股票代码】或【市场选择】是否匹配。");
+            }
+
+            const klines = res.data.klines;
+            const assetName = res.data.name || symbol; // 获取真实的中文名称
+            
+            let dates = [], prices = [], highs = [];
+            klines.forEach(s => {
+                const p = s.split(',');
+                if (p.length >= 3) {
+                    dates.push(p[0]);
+                    prices.push(parseFloat(p[1])); // 收盘
+                    highs.push(parseFloat(p[2]));  // 最高
+                }
+            });
+
+            status.innerText = `✅ 加载成功: ${assetName} (${secid})`;
+            calculateAndDraw(dates, prices, highs, assetName);
+
+        } catch (err) {
+            alert(err.message);
+            status.innerText = "❌ 查询失败";
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    // --- 数据计算与绘图 ---
+    function calculateAndDraw(dates, prices, highs, title) {
+        let drawdowns = [];
+        let runningMaxClose = -Infinity;
+        let maxDD = 0;
+        let trueMax = -Infinity;
+
+        // 1. 计算区间真实最高点
+        for (let h of highs) {
+            if (h > trueMax) trueMax = h;
+        }
+
+        // 2. 计算每日回撤 (基于收盘价)
+        for (let p of prices) {
+            if (p > runningMaxClose) runningMaxClose = p;
+            let dd = ((p - runningMaxClose) / runningMaxClose) * 100;
+            drawdowns.push(dd);
+            if (dd < maxDD) maxDD = dd;
+        }
+
+        const last = prices.length - 1;
+
+        // 3. 更新卡片UI
+        document.getElementById('valPrice').innerText = prices[last].toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('valDate').innerText = dates[last];
+        document.getElementById('valHigh').innerText = trueMax.toLocaleString(undefined, {minimumFractionDigits: 2});
+        
+        const currDD = drawdowns[last];
+        const elDD = document.getElementById('valDD');
+        elDD.innerText = currDD.toFixed(2) + "%";
+        elDD.style.color = currDD >= 0 ? '#179c17' : '#d0021b';
+        
+        document.getElementById('valMaxDD').innerText = maxDD.toFixed(2) + "%";
+
+        // 4. Chart.js 绘图
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: '价格/点位',
+                        data: prices,
+                        borderColor: '#2b85e4', // 蓝色主线
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: '回撤 %',
+                        data: drawdowns,
+                        borderColor: '#ed4014', // 红色水下线
+                        backgroundColor: 'rgba(237, 64, 20, 0.1)',
+                        borderWidth: 1,
+                        fill: true,
+                        pointRadius: 0,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: { display: true, text: `${title} - 历史走势与回撤` },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let val = context.parsed.y;
+                                if (context.dataset.label.includes('回撤')) return `回撤: ${val.toFixed(2)}%`;
+                                return `数值: ${val.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 12 } },
+                    y: { 
+                        type: 'linear', position: 'left', 
+                        title: { display: true, text: '回撤幅度 (%)' }
+                    },
+                    y1: { 
+                        type: 'linear', position: 'right',
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // 初始化默认加载腾讯
+    window.onload = () => quickLoad('00700', '116', '1');
+</script>
+
+</body>
+</html>
