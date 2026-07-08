@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全球核心资产与跨境ETF回撤分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #007bff; --em-red: #df3031; --bg: #f4f6f9; }
+        body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 25px; }
+
+        h2 { text-align: center; margin-top: 0; color: #2c3e50; margin-bottom: 25px; }
+
+        /* 搜索控制区 */
+        .search-box { 
+            background: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #eee;
+            display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; justify-content: center; margin-bottom: 20px;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        .input-group label { font-size: 13px; font-weight: bold; color: #555; }
+        
+        input, select { padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+        input:focus, select:focus { border-color: var(--primary); }
+        input { width: 100px; text-transform: uppercase; font-weight: bold; }
+
+        .btn-search { 
+            padding: 9px 20px; background: var(--em-red); color: #fff; border: none; border-radius: 6px; 
+            font-size: 15px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; height: 38px;
+        }
+        .btn-search:hover { opacity: 0.9; }
+
+        /* 快捷标签页 */
+        .tabs { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid #eee; margin-bottom: 15px; }
+        .tab { padding: 8px 15px; cursor: pointer; font-size: 14px; font-weight: bold; color: #666; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .quick-panel { display: none; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+        .quick-panel.active { display: flex; }
+        
+        .q-btn { 
+            background: #fff; border: 1px solid #ddd; color: #444; padding: 6px 14px; 
+            border-radius: 20px; font-size: 13px; cursor: pointer; transition: all 0.2s;
+        }
+        .q-btn:hover { border-color: var(--primary); color: var(--primary); background: #f0f7ff; }
+        .q-btn.highlight { border-color: #ff9900; color: #d35400; font-weight: bold; background: #fffaf0;}
+        .q-btn.sina { border-color: #d81e06; color: #d81e06; background: #fff0f0;}
+        .q-btn.sina:hover { background: #d81e06; color: #fff;}
+
+        /* 状态与数据 */
+        .status-msg { text-align: center; font-size: 13px; color: #888; margin-bottom: 15px; height: 20px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: #fff; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #eaeaea; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .card-lbl { font-size: 13px; color: #888; margin-bottom: 5px; }
+        .card-val { font-size: 24px; font-weight: bold; color: #222; }
+        
+        .red { color: #d0021b; } .green { color: #179c17; }
+
+        /* 图表 */
+        .chart-box { position: relative; height: 450px; width: 100%; }
+        .loader { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(255,255,255,0.9); display: none; justify-content: center; align-items: center; z-index: 10; font-weight: bold; color: var(--em-red);}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🌍 全球核心资产及跨境ETF回撤分析</h2>
+
+    <!-- 自定义搜索区 -->
+    <div class="search-box">
+        <div class="input-group">
+            <label>代码 (如 NVDA)</label>
+            <input type="text" id="symbol" placeholder="代码" value="NVDA">
+        </div>
+        <div class="input-group">
+            <label>数据源及市场</label>
+            <select id="dataSource">
+                <option value="EM_1">东方财富 - 沪市A股/ETF (1)</option>
+                <option value="EM_0">东方财富 - 深市A股/ETF (0)</option>
+                <option value="EM_116">东方财富 - 港股 (116)</option>
+                <option value="EM_105" selected>东方财富 - 美股纳斯达克 (105)</option>
+                <option value="EM_106">东方财富 - 美股纽交所 (106)</option>
+                <option value="SINA_US">新浪财经 - 美股指数 (直连)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>资产属性</label>
+            <select id="assetType">
+                <option value="1">ETF/个股 (复权)</option>
+                <option value="0">指数 (不复权)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>时间范围</label>
+            <select id="timeLimit">
+                <option value="250">最近 1 年</option>
+                <option value="1250" selected>最近 5 年</option>
+                <option value="2500">最近 10 年</option>
+                <option value="100000">全历史</option>
+            </select>
+        </div>
+        <button class="btn-search" onclick="fetchDataFromUI()">🚀 获取数据</button>
+    </div>
+
+    <!-- 快捷按键区 -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('etf')">🌐 跨境ETF与大盘指数</div>
+        <div class="tab" onclick="switchTab('us')">🇺🇸 核心美股</div>
+        <div class="tab" onclick="switchTab('hk')">🇭🇰 核心港股</div>
+        <div class="tab" onclick="switchTab('cn')">🇨🇳 A股核心</div>
+    </div>
+
+    <!-- 1. 跨境ETF 与 美股指数 -->
+    <div id="panel-etf" class="quick-panel active">
+        <!-- 美股大盘指数：走【新浪源 (SINA)】 -->
+        <button class="q-btn sina" onclick="quickLoad('SINA', 'US', '.INX', '0', '标普500指数')">标普500 (SPX)</button>
+        <button class="q-btn sina" onclick="quickLoad('SINA', 'US', '.IXIC', '0', '纳斯达克综合')">纳指综合 (IXIC)</button>
+        <button class="q-btn sina" onclick="quickLoad('SINA', 'US', '.NDX', '0', '纳斯达克100')">纳指100 (NDX)</button>
+        <button class="q-btn sina" onclick="quickLoad('SINA', 'US', '.DJI', '0', '道琼斯指数')">道琼斯 (DJI)</button>
+        
+        <div style="width: 100%; height: 1px; background: #eee; margin: 5px 0;"></div>
+
+        <!-- 跨境ETF与杠杆：走【东财源 (EM)】 -->
+        <button class="q-btn highlight" onclick="quickLoad('EM', '1', '513100', '1', '纳指100 ETF')">纳指100 ETF (513100)</button>
+        <button class="q-btn highlight" onclick="quickLoad('EM', '0', '159941', '1', '纳指 ETF')">纳指 ETF (159941)</button>
+        <button class="q-btn highlight" onclick="quickLoad('EM', '1', '513300', '1', '纳指科技 ETF')">纳指科技 ETF (513300)</button>
+        <button class="q-btn highlight" onclick="quickLoad('EM', '0', '159509', '1', '纳斯达克100 ETF')">纳斯达克100 ETF (159509)</button>
+        <button class="q-btn highlight" onclick="quickLoad('EM', '1', '513400', '1', '道琼斯 ETF')">道琼斯 ETF (513400)</button>
+        <button class="q-btn highlight" onclick="quickLoad('EM', '1', '513500', '1', '标普500 ETF')">标普500 ETF (513500)</button>
+        <button class="q-btn highlight" onclick="quickLoad('EM', '105', 'TQQQ', '1', 'TQQQ (三倍做多纳指)')">TQQQ (纳指3倍)</button>
+    </div>
+
+    <!-- 2. 美股 -->
+    <div id="panel-us" class="quick-panel">
+        <button class="q-btn" onclick="quickLoad('EM', '105', 'NVDA', '1', '英伟达')">英伟达 (NVDA)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '105', 'AAPL', '1', '苹果')">苹果 (AAPL)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '105', 'MSFT', '1', '微软')">微软 (MSFT)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '105', 'TSLA', '1', '特斯拉')">特斯拉 (TSLA)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '105', 'GOOG', '1', '谷歌')">谷歌 (GOOG)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '105', 'AMZN', '1', '亚马逊')">亚马逊 (AMZN)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '105', 'META', '1', 'Meta')">Meta (META)</button>
+    </div>
+
+    <!-- 3. 港股 -->
+    <div id="panel-hk" class="quick-panel">
+        <button class="q-btn" onclick="quickLoad('EM', '116', '00700', '1', '腾讯控股')">腾讯控股 (00700)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '116', '09988', '1', '阿里巴巴')">阿里巴巴 (09988)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '116', '03690', '1', '美团')">美团 (03690)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '124', 'HSI', '0', '恒生指数')">恒生指数 (大盘)</button>
+    </div>
+
+    <!-- 4. A股 -->
+    <div id="panel-cn" class="quick-panel">
+        <button class="q-btn" onclick="quickLoad('EM', '1', '000001', '0', '上证指数')">上证指数 (000001)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '1', '000300', '0', '沪深300')">沪深300 (000300)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '1', '600519', '1', '贵州茅台')">贵州茅台 (600519)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '0', '300750', '1', '宁德时代')">宁德时代 (300750)</button>
+        <button class="q-btn" onclick="quickLoad('EM', '0', '002594', '1', '比亚迪')">比亚迪 (002594)</button>
+    </div>
+
+    <!-- 数据展示区 -->
+    <div class="status-msg" id="statusMsg">双引擎：个股/ETF使用东财复权，美股指数使用新浪直连。</div>
+    
+    <div class="stats-grid">
+        <div class="card">
+            <div class="card-lbl">最新收盘</div>
+            <div class="card-val" id="valPrice">-</div>
+            <div class="card-lbl" id="valDate" style="font-size:11px; margin-top:3px;">-</div>
+        </div>
+        <div class="card">
+            <div class="card-lbl">区间最高 (盘中极值)</div>
+            <div class="card-val" id="valHigh">-</div>
+        </div>
+        <div class="card">
+            <div class="card-lbl">当前回撤</div>
+            <div class="card-val red" id="valDD">-</div>
+        </div>
+        <div class="card">
+            <div class="card-lbl">区间最大回撤</div>
+            <div class="card-val red" id="valMaxDD">-</div>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <div class="loader" id="loader">正在加载数据...</div>
+        <canvas id="myChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let myChart = null;
+
+    // --- 界面交互 ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.quick-panel').forEach(p => p.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById(`panel-${tabName}`).classList.add('active');
+    }
+
+    // 快捷按钮路由
+    function quickLoad(source, market, symbol, type, assetName) {
+        document.getElementById('symbol').value = symbol;
+        document.getElementById('assetType').value = type;
+        
+        if (source === 'SINA') {
+            document.getElementById('dataSource').value = 'SINA_US';
+        } else {
+            document.getElementById('dataSource').value = 'EM_' + market;
+        }
+        fetchData(source, market, symbol, type, assetName);
+    }
+
+    // 界面搜索按钮入口
+    function fetchDataFromUI() {
+        const symbol = document.getElementById('symbol').value.toUpperCase().trim();
+        const dsValue = document.getElementById('dataSource').value; 
+        const type = document.getElementById('assetType').value;
+        
+        if (!symbol) { alert("请输入代码"); return; }
+
+        if (dsValue === 'SINA_US') {
+            let sinaSymbol = symbol;
+            if (!sinaSymbol.startsWith('.')) sinaSymbol = '.' + sinaSymbol;
+            fetchData('SINA', 'US', sinaSymbol, type, symbol);
+        } else {
+            const market = dsValue.split('_')[1];
+            fetchData('EM', market, symbol, type, symbol);
+        }
+    }
+
+    // ===============================================
+    // 东财引擎工具 (JSONP 回调函数包裹法)
+    // ===============================================
+    function jsonpEastmoney(url, callbackName) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            const timer = setTimeout(() => { cleanup(); reject(new Error("网络请求超时")); }, 8000);
+
+            function cleanup() {
+                delete window[callbackName];
+                if (document.body.contains(script)) document.body.removeChild(script);
+                clearTimeout(timer);
+            }
+
+            window[callbackName] = function(data) { cleanup(); resolve(data); };
+            script.src = url;
+            script.onerror = () => { cleanup(); reject(new Error("网络连接断开")); };
+            document.body.appendChild(script);
+        });
+    }
+
+    // ===============================================
+    // 主请求路由
+    // ===============================================
+    async function fetchData(source, market, symbol, type, assetName) {
+        const limit = document.getElementById('timeLimit').value;
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('statusMsg');
+
+        loader.style.display = 'flex';
+        status.innerText = `正在分析 ${assetName || symbol}...`;
+
+        try {
+            if (source === 'SINA') {
+                await fetchFromSina(symbol, limit, assetName);
+            } else {
+                await fetchFromEastmoney(market, symbol, type, limit, assetName);
+            }
+        } catch (err) {
+            alert(err.message);
+            status.innerText = "❌ 查询失败";
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    // --- 引擎1：东方财富 (专攻个股、ETF) ---
+    async function fetchFromEastmoney(market, symbol, type, limit, assetName) {
+        const secid = `${market}.${symbol}`;
+        const cbName = 'cb_em_' + Date.now();
+        const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3&fields2=f51,f53,f54&klt=101&fqt=${type}&end=20500101&lmt=${limit}&cb=${cbName}&_=${Math.random()}`;
+
+        const res = await jsonpEastmoney(url, cbName);
+        
+        if (!res || !res.data || !res.data.klines) {
+            throw new Error(`未找到数据。请检查代码是否正确，或市场是否选对。`);
+        }
+
+        const klines = res.data.klines;
+        const realName = res.data.name || assetName || symbol;
+        
+        let dates = [], prices = [], highs = [];
+        klines.forEach(s => {
+            const p = s.split(',');
+            if (p.length >= 3) {
+                const closePrice = parseFloat(p[1]);
+                const highPrice = parseFloat(p[2]);
+                if (!isNaN(closePrice)) {
+                    dates.push(p[0]);
+                    prices.push(closePrice);
+                    highs.push(isNaN(highPrice) ? closePrice : highPrice); // 修补缺失高点
+                }
+            }
+        });
+
+        document.getElementById('statusMsg').innerHTML = `✅ 分析完成: <b>${realName}</b> (东财源 - ${type === '1' ? '已复权' : '未复权'})`;
+        calculateAndDraw(dates, prices, highs, realName);
+    }
+
+    // --- 引擎2：新浪财经 (完全照搬您提供的 7sister.html 中的 script.onload 逻辑，不画蛇添足) ---
+    function fetchFromSina(symbol, limitStr, assetName) {
+        return new Promise((resolve, reject) => {
+            const varName = 'sina_' + Date.now();
+            const url = `https://stock.finance.sina.com.cn/usstock/api/jsonp_v2.php/window.${varName}=/US_MinKService.getDailyK?symbol=${symbol}&___=${Math.random()}`;
+            
+            const script = document.createElement('script');
+            const timer = setTimeout(() => { 
+                cleanup(); 
+                reject(new Error("新浪请求超时")); 
+            }, 8000);
+
+            function cleanup() {
+                clearTimeout(timer);
+                delete window[varName];
+                if (document.body.contains(script)) document.body.removeChild(script);
+            }
+
+            script.onload = () => {
+                const data = window[varName];
+                cleanup();
+                
+                if (data && Array.isArray(data)) {
+                    // 确保按日期升序排序
+                    data.sort((a, b) => new Date(a.d) - new Date(b.d));
+                    
+                    let slicedData = data;
+                    if (limitStr !== '100000') {
+                        const limitNum = parseInt(limitStr);
+                        if (data.length > limitNum) slicedData = data.slice(-limitNum);
+                    }
+
+                    let dates = [], prices = [], highs = [];
+                    slicedData.forEach(k => {
+                        dates.push(k.d);
+                        prices.push(parseFloat(k.c));
+                        highs.push(parseFloat(k.h));
+                    });
+
+                    document.getElementById('statusMsg').innerHTML = `✅ 分析完成: <b>${assetName}</b> (新浪源 - 稳定直连)`;
+                    calculateAndDraw(dates, prices, highs, assetName);
+                    resolve();
+                } else {
+                    reject(new Error("新浪数据格式异常"));
+                }
+            };
+            
+            script.onerror = () => {
+                cleanup();
+                reject(new Error("新浪网络断开"));
+            };
+            
+            script.src = url;
+            document.body.appendChild(script);
+        });
+    }
+
+    // ===============================================
+    // 数据计算与绘图
+    // ===============================================
+    function calculateAndDraw(dates, prices, highs, title) {
+        let drawdowns = [];
+        let runningMaxClose = -Infinity;
+        let maxDD = 0;
+        let trueMax = -Infinity;
+
+        // 计算区间内真正的最高极值点
+        for (let h of highs) {
+            if (h > trueMax) trueMax = h;
+        }
+
+        // 计算每日收盘回撤
+        for (let p of prices) {
+            if (p > runningMaxClose) runningMaxClose = p;
+            let dd = ((p - runningMaxClose) / runningMaxClose) * 100;
+            drawdowns.push(dd);
+            if (dd < maxDD) maxDD = dd;
+        }
+
+        const last = prices.length - 1;
+
+        // 更新卡片
+        document.getElementById('valPrice').innerText = prices[last].toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById('valDate').innerText = dates[last];
+        document.getElementById('valHigh').innerText = trueMax.toLocaleString(undefined, {minimumFractionDigits: 2});
+        
+        const currDD = drawdowns[last];
+        const elDD = document.getElementById('valDD');
+        elDD.innerText = currDD.toFixed(2) + "%";
+        elDD.style.color = currDD >= 0 ? '#179c17' : '#d0021b';
+        
+        document.getElementById('valMaxDD').innerText = maxDD.toFixed(2) + "%";
+
+        // Chart.js 绘图
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: '资产价格/点位',
+                        data: prices,
+                        borderColor: '#2b85e4',
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: '回撤 %',
+                        data: drawdowns,
+                        borderColor: '#ed4014',
+                        backgroundColor: 'rgba(237, 64, 20, 0.1)',
+                        borderWidth: 1,
+                        fill: true,
+                        pointRadius: 0,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    title: { display: true, text: `${title} - 走势与回撤图` },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let val = context.parsed.y;
+                                if (context.dataset.label.includes('回撤')) return `回撤: ${val.toFixed(2)}%`;
+                                return `数值: ${val.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 12 } },
+                    y: { 
+                        type: 'linear', position: 'left', 
+                        title: { display: true, text: '回撤幅度 (%)' }, max: 5
+                    },
+                    y1: { 
+                        type: 'linear', position: 'right',
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // 默认加载纳指100 ETF
+    window.onload = () => quickLoad('EM', '1', '513100', '1', '纳指100 ETF');
+</script>
+
+</body>
+</html>
